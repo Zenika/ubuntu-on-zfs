@@ -1,0 +1,109 @@
+:experimental:
+:icons: font
+
+== Installation d'Ubuntu
+
+Nous allons dérouler l'installation du système d'exploitation Ubuntu sur un
+système de fichiers ZFS, ceci pour bénéficier des possibilités offertes par
+ZFS pour restaurer facilement les PC de formation dans un état donné.
+
+Pour dérouler l'installation, il faut télécharger une image disque
+link:http://releases.ubuntu.com/18.04/ubuntu-18.04.2-desktop-amd64.iso[d'Ubuntu 18.04 64 bits Desktop,window=_blank],
+et créer une clé USB de démarrage à partir de cette image
+footnote:[Didacticiel de création d'une clé USB de démarrage d'Ubuntu : https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-ubuntu].
+
+=== Démarrage d'une session _live_ d'Ubuntu
+
+. Insérer la clé de démarrage d'Ubuntu dans un port USB de l'ordinateur ;
+. allumer ou redémarrer l'ordinateur, puis faire afficher le menu de démarrage
+(voir  _<<firmware-config>>_) ;
+. appuyer sur kbd:[F12] pour sélectionner le périphérique de démarrage
+(`F12 to choose a temporary starting device`) ;
+. sélectionner le périphérique correspondant à la clé USB de démarrage
+d'Ubuntu, puis valider avec kbd:[Enter] ;
+. dans le menu GRUB, sélectionner _Try Ubuntu without installing_, puis valider
+avec kbd:[Enter]. 
+
+=== Installation
+
+IMPORTANT: La procédure détaillée ci-dessous nécessite que l'ordinateur ait
+accès à Internet.
+
+==== Préparation de l'environnement d'installation
+
+. Ouvrir un terminal ;
+. activer le dépôt `universe` :
++
+```shell
+$ sudo apt-add-repository universe
+```
+. passer `root` :
++
+```shell
+$ sudo -s
+```
+. installer les paquets nécessaires au formattage du disque :
++
+```shell
+# apt install -y debootstrap gdisk zfs-initramfs
+```
+
+==== Formattage du disque
+
+. Identifier le disque à utiliser pour l'installation :
++
+```shell
+$ ls -la /dev/disk/by-id
+```
+Repérer dans ce dossier le lien symbolique vers le _block device_ `/dev/nvme0nX`
+footnote:[Ne pas confondre le _block device_ `/dev/nvme0nX` avec le _character
+device_ `/dev/nvme0`. Le premier représente un disque – sur lequel on veut
+écrire concrètement – alors que le second représente le contrôleur NVME de
+l'ordinateur]
+, où `X` est un chiffre (le lien symbolique ver `/dev/nvme0n1` normalement
+dans notre cas).
++
+NOTE: On utilisera le chemin `/dev/disk/by-id/my-disk` en guise d'exemple dans
+la suite de cette documentation.
++
+[WARNING]
+====
+Le didacticiel utilisé comme base à cette documentation préconise d'utiliser
+les alias `/dev/disk/by-id/\*` et non les chemins directs aux _block devices_
+`/dev/nvme0n*` pour toutes les commandes concernant ZFS.
+====
+
+. Effacer la table de partition du disque :
++
+```shell
+# sgdisk --zap-all /dev/disk/by-id/my-disk
+```
+
+. Partitionner le disque :
+    * créer une partition UEFI :
++
+```shell
+# sgdisk -n2:1M:+512M \ // <1>
+    -t2:EF00 \ // <2>
+    /dev/disk/by-id/my-disk
+```
+<1> Créer une nouvelle partition numérotée `2`, à 1 Mio
+footnote:[Mio pour « mébioctet ». 1 Mio = 2^20^ octets = 1 048 576 octets, alors que 1 Mo = 10^6^ octets = 1 000 000 octets. Voir https://fr.wikipedia.org/wiki/Octet] du début du disque, de taille 512 Mio.
+<2> Spécifie le type de la partition `2`, ici, `EF00` désigne une partition système EFI
+footnote:[Voir les différents types de partitions : https://wiki.archlinux.org/index.php/GPT_fdisk#Partition_type].
+
+    * créer une partition pour le pool de démarrage ??????????????? :
++
+```shell
+# sgdisk -n3:0:+512M \
+    -t3:BF01 \
+    /dev/disk/by-id/my-disk
+```
+
+    * créer une partition ??????????????????? :
++
+```shell
+# sgdisk -n4:0:0 \
+    -t4:BF01 \
+    /dev/disk/by-id/my-disk
+```

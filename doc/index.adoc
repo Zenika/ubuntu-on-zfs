@@ -10,70 +10,8 @@
 Ce document est un compte-rendu d'installation des ordinateurs portables Lenovo,
 utilisés en formation.
 
-== Configuration du firmware
+include::chapters/firmware-config.adoc[]
 
-Pour accéder à la configuration du firmware, allumer l'ordinateur, puis appuyer 
-rapidement sur la touche kbd:[↵] (kbd:[Enter]) comme proposé lorsque le logo
-_Lenovo (TM)_ apparaît à l'écran.
+include::chapters/windows-license-backup.adoc[]
 
-NOTE: Ne pas hésiter à marteler la touche kbd:[↵] jusqu'à ce qu'un bip
-retentisse, synonyme de succès dans l'accès au menu de démarrage.
-
-Un menu de démarrage s'affiche à l'écran, avec plusieurs options.
-
-Appuyer sur kbd:[F1] pour accéder à la configuration du firmware (« `F1 to enter the BIOS Setup Utility` »).
-
-[discrete]
-=== Désactivation du « Secure Boot »
-Aller sur l'écran de configuration menu:Security[Secure Boot] et modifier les paramètres comme suit :
-
-[horizontal]
-`Secure Boot`:: `[Disabled]`
-
-[discrete]
-=== Virtualisation
-Aller sur l'écran de configuration menu:Security[Virtualization] et modifier
-les paramètres comme suit :
-
-[horizontal]
-`Intel \(R) Virtualization Technology`:: `[Enabled]`
-`Intel \(R) VT-d Feature`:: `[Enabled]`
-
-[discrete]
-=== Configuration du clavier
-Aller sur l'écran de configuration menu:Config[Keyboard/Mouse] et modifier
-les paramètres comme suit :
-
-[horizontal]
-`Fn and Ctrl Key swap`:: `[Enabled]`
-`F1-F12 as Primary Function`:: `[Enabled]`
-
-Une fois toutes les modifications effectuées, sélectionner
-menu:Restart[Exit Saving Changes], puis appuyer sur kbd:[↵] pour sauvegarder
-la configuration et redémarrer l'ordinateur.
-
-== Licence Windows
-
-Avant d'installer un OS Linux en remplacement du Windows 10 pré-installé, il
-convient de sauvegarder la clé de licence de Windows afin de pouvoir la
-réutiliser lors de l'installation éventuelle de Windows 10 dans une machine
-virtuelle.
-
-. Démarrer l'ordinateur et ouvrir une session Windows ;
-. lancer _Windows Powershell_ en mode _Administrateur_ depuis le menu démarrer ;
-+
-NOTE: Pour lancer un logiciel en mode _Administrateur_, faire un clic droit sur
-l'icône du programme, puis cliquer sur _Exécuter en tant qu'administrateur_.
-. installer les outils _Chocolatey_
-footnote:chocolatey[Installation de Chocolatey depuis PowerShell : https://chocolatey.org/install#install-with-powershellexe.]
-et _The Magical Jelly Bean Keyfinder_
-footnote:[Installation de _The Magical Jelly Bean Keyfinder_ avec Chocolatey : https://chocolatey.org/packages/keyfinder.] en exécutant la commande suivante dans la console PowerShell :
-+
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')); choco install -y keyfinder
-```
-+
-IMPORTANT: L'ordinateur doit avoir accès à Internet pour dérouler
-l'installation.
-. lancer _Keyfinder_ depuis le menu démarrer ;
-. sauvegarder la version de Windows, le « Product ID » et la « CD Key » pour réutilisation future.
+include::chapters/ubuntu-install.adoc[]
