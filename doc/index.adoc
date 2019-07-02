@@ -15,3 +15,5 @@ include::chapters/firmware-config.adoc[]
 include::chapters/windows-license-backup.adoc[]
 
 include::chapters/ubuntu-install.adoc[]
+
+include::chapters/references.adoc[]

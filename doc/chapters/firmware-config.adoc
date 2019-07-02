@@ -38,5 +38,5 @@ les paramètres comme suit :
 `F1-F12 as Primary Function`:: `[Enabled]`
 
 Une fois toutes les modifications effectuées, sélectionner
-menu:Restart[Exit Saving Changes], puis appuyer sur kbd:[↵] pour sauvegarder
+menu:Restart[Exit Saving Changes], puis appuyer sur kbd:[Enter] pour sauvegarder
 la configuration et redémarrer l'ordinateur.

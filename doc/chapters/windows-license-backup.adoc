@@ -26,4 +26,4 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.We
 IMPORTANT: L'ordinateur doit avoir accès à Internet pour dérouler
 l'installation.
 . lancer _Keyfinder_ depuis le menu démarrer ;
-. sauvegarder la version de Windows, le « Product ID » et la « CD Key » pour réutilisation future.
+. sauvegarder la version de Windows, le _Product ID_ et la _CD Key_, pour réutilisation future.

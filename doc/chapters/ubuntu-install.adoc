@@ -21,7 +21,7 @@ footnote:[Didacticiel de création d'une clé USB de démarrage d'Ubuntu : https
 (`F12 to choose a temporary starting device`) ;
 . sélectionner le périphérique correspondant à la clé USB de démarrage
 d'Ubuntu, puis valider avec kbd:[Enter] ;
-. dans le menu GRUB, sélectionner _Try Ubuntu without installing_, puis valider
+. dans le menu GRUB, sélectionner `Try Ubuntu without installing`, puis valider
 avec kbd:[Enter]. 
 
 === Installation
@@ -37,7 +37,7 @@ accès à Internet.
 ```shell
 $ sudo apt-add-repository universe
 ```
-. passer `root` :
+. Devenir `root` :
 +
 ```shell
 $ sudo -s
@@ -69,17 +69,17 @@ la suite de cette documentation.
 [WARNING]
 ====
 Le didacticiel utilisé comme base à cette documentation préconise d'utiliser
-les alias `/dev/disk/by-id/\*` et non les chemins directs aux _block devices_
-`/dev/nvme0n*` pour toutes les commandes concernant ZFS.
+les alias par identifiants (`/dev/disk/by-id/\*`) et non les chemins directs
+aux _block devices_ (`/dev/nvme0n*`) pour toutes les commandes concernant ZFS.
 ====
 
-. Effacer la table de partition du disque :
+. effacer la table de partition du disque :
 +
 ```shell
 # sgdisk --zap-all /dev/disk/by-id/my-disk
 ```
 
-. Partitionner le disque :
+. partitionner le disque :
     * créer une partition UEFI :
 +
 ```shell
