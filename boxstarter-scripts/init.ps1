@@ -72,7 +72,7 @@ Set-ItemProperty -Path HKLM:\Software\Microsoft\PolicyManager\default\WiFi\Allow
 
 # Better file explorer and taskbar
 Set-WindowsExplorerOptions -EnableShowHiddenFilesFoldersDrives -DisableOpenFileExplorerToQuickAccess -EnableShowFileExtensions
-Set-TaskbarOptions -Size Large -Dock Bottom -Combine Full -Lock -AlwaysShowIconsOn -AutoHide
+Set-TaskbarOptions -Size Large -Dock Bottom -Combine Full -AlwaysShowIconsOn
 
 # ⚠ Re-enable UAC
 Enable-UAC
