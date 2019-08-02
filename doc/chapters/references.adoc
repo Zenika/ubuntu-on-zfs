@@ -5,3 +5,5 @@
 == Références
 
 * Ubuntu 18.04 Root on ZFS : https://github.com/zfsonlinux/zfs/wiki/Ubuntu-18.04-Root-on-ZFS
+* manpage `zpool` : http://manpages.ubuntu.com/manpages/bionic/man8/zpool.8.html
+* manpage `zpool-features` : http://manpages.ubuntu.com/manpages/bionic/man5/zpool-features.5.html

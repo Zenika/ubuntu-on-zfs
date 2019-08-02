@@ -92,7 +92,7 @@ footnote:[Mio pour « mébioctet ». 1 Mio = 2^20^ octets = 1 048 576 octets, 
 <2> Spécifie le type de la partition `2`, ici, `EF00` désigne une partition système EFI
 footnote:[Voir les différents types de partitions : https://wiki.archlinux.org/index.php/GPT_fdisk#Partition_type].
 
-    * créer une partition pour le pool de démarrage ??????????????? :
+    *  [[boot-pool-partition]] créer une partition pour le _pool_ de démarrage :
 +
 ```shell
 # sgdisk -n3:0:+512M \
@@ -107,3 +107,45 @@ footnote:[Voir les différents types de partitions : https://wiki.archlinux.org/
     -t4:BF01 \
     /dev/disk/by-id/my-disk
 ```
+
+. Créer les _pools_ ZFS
+
+    * Créer le _pool_ de démarrage
++
+```shell
+# zpool create -o ashift=12 \ //<1>
+      -d \ //<2>
+      -o feature@async_destroy=enabled \
+      -o feature@bookmarks=enabled \
+      -o feature@embedded_data=enabled \
+      -o feature@empty_bpobj=enabled \
+      -o feature@enabled_txg=enabled \
+      -o feature@extensible_dataset=enabled \
+      -o feature@filesystem_limits=enabled \
+      -o feature@hole_birth=enabled \
+      -o feature@large_blocks=enabled \
+      -o feature@lz4_compress=enabled \
+      -o feature@spacemap_histogram=enabled \
+      -o feature@userobj_accounting=enabled \
+      -O acltype=posixacl \
+      -O canmount=off \ // <3>
+      -O compression=lz4 \
+      -O devices=off \
+      -O normalization=formD \
+      -O relatime=on \
+      -O xattr=sa \
+      -O mountpoint=/ \
+      -R /mnt \ // <4>
+      bpool \ // <5>
+      /dev/disk/by-id/my-disk-part3 // <6>
+```
+<1> Exposant de la taille de secteur du _pool_. On positionne la valeur de
+`ashift` à 12 pour correspondre à la taille de secteur de 4096 (2^12^) octets
+des disques modernes
+footnote:[Note sur les disque AF (Advanced Format) : https://github.com/zfsonlinux/zfs/wiki/faq#advanced-format-disks].
+<2> Les propriétés à activer pour le _pool_ de démarrage sont listées explicitement.
+<3> Propriétés du système de fichiers.
+<4> Point du montage du _pool_.
+<5> Nom donné au _pool_.
+<6> _Block device_ utilisé pour créer le _pool_. Il s'agit de la partition créer <<boot-pool-partition, ci-dessus>>.
+
