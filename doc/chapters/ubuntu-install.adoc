@@ -1,5 +1,6 @@
 :experimental:
 :icons: font
+:toc:
 
 == Installation d'Ubuntu
 
@@ -92,7 +93,7 @@ footnote:[Mio pour « mébioctet ». 1 Mio = 2^20^ octets = 1 048 576 octets, 
 <2> Spécifie le type de la partition `2`, ici, `EF00` désigne une partition système EFI
 footnote:[Voir les différents types de partitions : https://wiki.archlinux.org/index.php/GPT_fdisk#Partition_type].
 
-    *  [[boot-pool-partition]] créer une partition pour le _pool_ de démarrage :
+    *  [[boot-pool-partition]] créer une partition de démarrage :
 +
 ```shell
 # sgdisk -n3:0:+512M \
@@ -100,7 +101,7 @@ footnote:[Voir les différents types de partitions : https://wiki.archlinux.org/
     /dev/disk/by-id/my-disk
 ```
 
-    * créer une partition ??????????????????? :
+    * créer une partition racine :
 +
 ```shell
 # sgdisk -n4:0:0 \
@@ -108,9 +109,11 @@ footnote:[Voir les différents types de partitions : https://wiki.archlinux.org/
     /dev/disk/by-id/my-disk
 ```
 
+==== Configuration ZFS
+
 . Créer les _pools_ ZFS
 
-    * Créer le _pool_ de démarrage
+    * Créer le _pool_ de démarrage :
 +
 ```shell
 # zpool create -o ashift=12 \ //<1>
@@ -143,9 +146,117 @@ footnote:[Voir les différents types de partitions : https://wiki.archlinux.org/
 `ashift` à 12 pour correspondre à la taille de secteur de 4096 (2^12^) octets
 des disques modernes
 footnote:[Note sur les disque AF (Advanced Format) : https://github.com/zfsonlinux/zfs/wiki/faq#advanced-format-disks].
-<2> Les propriétés à activer pour le _pool_ de démarrage sont listées explicitement.
+<2> Seules les propriétés supportées par Grub sont activées individuellement.
 <3> Propriétés du système de fichiers.
 <4> Point du montage du _pool_.
 <5> Nom donné au _pool_.
 <6> _Block device_ utilisé pour créer le _pool_. Il s'agit de la partition créer <<boot-pool-partition, ci-dessus>>.
 
+    * Créer le _pool_ racine :
++
+```shell
+# zpool create -o ashift=12 \
+      -O acltype=posixacl \
+      -O canmount=off \
+      -O compression=lz4 \
+      -O dnodesize=auto \
+      -O normalization=formD \
+      -O relatime=on \
+      -O xattr=sa \
+      -O mountpoint=/ \
+      -R /mnt \
+      rpool \
+      /dev/disk/by-id/my-disk-part4
+```
+
+. Créer les _datasets_
+
+    * Créer les _datasets_ qui feront office de conteneurs, sur chacun
+    des deux _pools_ :
++
+```shell
+# zfs create -o canmount=off -o mountpoint=none rpool/ROOT
+# zfs create -o canmount=off -o mountpoint=none bpool/BOOT
+```
+    * Créer et monter le _dataset_ du système de fichier racine :
++
+```shell
+# zfs create -o canmount=noauto -o mountpoint=/ rpool/ROOT/ubuntu
+# zfs mount rpool/ROOT/ubuntu
+```
+    * Créer et monter le _dataset_ du système de fichier de démarrage:
++
+```shell
+# zfs create -o canmount=noauto -o mountpoint=/boot bpool/BOOT/ubuntu
+# zfs mount bpool/BOOT/ubuntu
+```
+
+[NOTE]
+====
+Dans le cas d'une installation classique, on créerait d'autres _datasets_,
+chacun configuré avec des options précises selon les points de montage
+(`/tmp`, `/var/log`, `/var/cache`…). Compte tenu de l'usage particulier
+qu'il sera fait de cette installation, nous nous contenterons des deux
+datasets ci-dessus.
+====
+
+==== Installation et configuration du système
+
+. Installer un système minimal :
++
+```shell
+# debootstrap bionic /mnt
+# zfs set devices=off rpool
+```
+
+. Configurer le système
+
+    * Configurer le nom d'hôte de la machine (`my-laptop` dans les
+exemples ci-dessous) :
++
+```shell
+# echo "my-laptop" > /mnt/etc/hostname
+# echo "127.0.1.1       my-laptop" >> /mnt/etc/hosts
+```
+
+    * Configurer l'interface réseau :
+    ** Identifier le nom de l'interface réseau à configurer :
++
+```shell
+# ip addr show
+```
++
+NOTE: On utilisera le nom d'interface `eth0` dans l'exemple ci-dessous
+
+    ** Créer le fichier `/mnt/etc/netplan/01-netcfg.yaml` avec le contenu
+suivant :
++
+```yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true
+```
++
+NOTE: La configuration ci-dessous est simple et repose sur DHCP. Adapter
+la configuration suivant les besoins.
+
+    * Configurer les sources des paquets logiciels
++
+```shell
+# echo -e "deb http://security.ubuntu.com/ubuntu bionic-security main universe\ndeb http://archive.ubuntu.com/ubuntu bionic-updates main universe" >> /mnt/etc/apt/sources.list
+```
+
+    * Lier le système de fichiers virtuels de l'environnement _live_ au 
+nouveau système et `chroot` :
++
+```shell
+# mount --rbind /dev  /mnt/dev
+# mount --rbind /proc /mnt/proc
+# mount --rbind /sys  /mnt/sys
+# chroot /mnt /bin/bash --login
+```
+
+
+TO BE CONTINUED… §4.5
