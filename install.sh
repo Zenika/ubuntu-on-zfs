@@ -184,9 +184,19 @@ configure_network() {
 }
 
 configure_apt_sources() {
-
     echo "deb http://security.ubuntu.com/ubuntu bionic-security main universe" >> /mnt/etc/apt/sources.list
     echo "deb http://archive.ubuntu.com/ubuntu bionic-updates main universe" >> /mnt/etc/apt/sources.list
+}
+
+prepare_for_chroot() {
+    mount --rbind /dev  /mnt/dev
+    mount --rbind /proc /mnt/proc
+    mount --rbind /sys  /mnt/sys
+    cp chroot-install.sh /mnt
+}
+
+chroot_install() {
+    TARGET_DISK="$TARGET_DISK" chroot /mnt /chroot-install.sh
 }
 
 main() {
@@ -213,6 +223,10 @@ main() {
     configure_network
 
     configure_apt_sources
+
+    prepare_for_chroot
+
+    chroot_install
 }
 
 main
