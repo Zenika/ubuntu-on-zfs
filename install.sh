@@ -65,8 +65,25 @@ create_partitions() {
     "${TARGET_DISK}"
 }
 
+# In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev.
+# Let's wait for them to be ready.
+wait_for_partitions() {
+    local retry=10
+
+    until [ -b "$TARGET_DISK-part3" ] \
+        && [ -b "$TARGET_DISK-part4" ]; do
+        if [ "$(((retry--)))" -eq 0 ]; then
+            echo "Timeout waiting for partitions"
+            exit 1
+        fi
+        echo "Waiting for partitions to be ready…"
+        sleep 1
+    done
+}
+
 create_zfs_pools() {
-    zpool create -o ashift=12 \
+
+    zpool create -f -o ashift=12 \
       -d \
       -o feature@async_destroy=enabled \
       -o feature@bookmarks=enabled \
@@ -92,7 +109,7 @@ create_zfs_pools() {
       bpool \
       "${TARGET_DISK}-part3"
 
-      zpool create -o ashift=12 \
+      zpool create -f -o ashift=12 \
       -O acltype=posixacl \
       -O canmount=off \
       -O compression=lz4 \
@@ -182,6 +199,8 @@ main() {
     format_disk
 
     create_partitions
+
+    wait_for_partitions
 
     create_zfs_pools
 
