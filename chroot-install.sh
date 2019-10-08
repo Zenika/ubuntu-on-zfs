@@ -45,6 +45,25 @@ set_root_password() {
     echo "root:$ROOT_PASSWORD" | chpasswd
 }
 
+enable_importing_bpool() {
+    cat <<EOT >> /etc/systemd/system/zfs-import-bpool.service
+[Unit]
+DefaultDependencies=no
+Before=zfs-import-scan.service
+Before=zfs-import-cache.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/zpool import -N -o cachefile=none bpool
+
+[Install]
+WantedBy=zfs-import.target
+EOT
+
+systemctl enable zfs-import-bpool.service
+}
+
 main() {
 
     symlink_mtab
@@ -60,6 +79,8 @@ main() {
     install_grub
 
     set_root_password
+
+    enable_importing_bpool
 }
 
 main
