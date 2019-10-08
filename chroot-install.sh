@@ -69,6 +69,29 @@ mount_tmp_in_tmpfs() {
     systemctl enable tmp.mount
 }
 
+setup_system_groups() {
+    addgroup --system lpadmin
+    addgroup --system sambashare
+}
+
+refresh_initrd_files() {
+    update-initramfs -u -k all
+}
+
+update_grub_config() {
+    sed -i -e 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="root=ZFS=rpool\/ROOT\/ubuntu"/' /etc/default/grub
+    sed -i -e 's/GRUB_TIMEOUT=0/GRUB_TIMEOUT=5/' /etc/default/grub
+    sed -i -e 's/GRUB_TIMEOUT=0/GRUB_TIMEOUT=5/' /etc/default/grub
+    sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/GRUB_CMDLINE_LINUX_DEFAULT=""/' /etc/default/grub
+    sed -i -e 's/#GRUB_TERMINAL=console/GRUB_TERMINAL=console/' /etc/default/grub
+
+    update-grub
+}
+
+install_boot_loader() {
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ubuntu --recheck --no-floppy
+}
+
 main() {
 
     symlink_mtab
@@ -88,6 +111,14 @@ main() {
     enable_importing_bpool
 
     mount_tmp_in_tmpfs
+
+    setup_system_groups
+
+    refresh_initrd_files
+
+    update_grub_config
+
+    install_boot_loader
 }
 
 main

@@ -1,0 +1,6 @@
+= Installation des PC de formations
+
+
+== Contraintes
+
+* Démarrer en mode UEFI
