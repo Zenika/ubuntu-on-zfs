@@ -41,6 +41,10 @@ install_grub() {
     apt install --yes grub-efi-amd64-signed shim-signed
 }
 
+set_root_password() {
+    echo "root:$ROOT_PASSWORD" | chpasswd
+}
+
 main() {
 
     symlink_mtab
@@ -54,6 +58,8 @@ main() {
     install_zfs
 
     install_grub
+
+    set_root_password
 }
 
 main

@@ -12,6 +12,7 @@ set -e
 #   e.g: laptop-1
 # NETWORK_INTERFACE network interface to use for install
 #   e.g: wlp2s0
+# ROOT_PASSWORD root password
 
 check_root() {
     if [[ "${EUID}" -ne 0 ]]; then
@@ -28,7 +29,7 @@ dependencies() {
 select_disk() {
     local disks
     local options
-    if [ -z $TARGET_DISK ]; then
+    if [ -z "$TARGET_DISK" ]; then
         shopt -s nullglob
         disks=(/dev/disk/by-id/*)
         shopt -u nullglob
@@ -140,9 +141,9 @@ install_minimum_system() {
 }
 
 configure_hostname() {
-    if [ -z $TARGET_HOSTNAME ]; then
+    if [ -z "$TARGET_HOSTNAME" ]; then
         TARGET_HOSTNAME=$(whiptail --inputbox \
-            "How do you want to name this machine?" 8 78 "" \
+            "Enter a host name for this machine" 8 78 "" \
             --title "Host name" 3>&1 1>&2 2>&3)
     fi
 
@@ -153,7 +154,7 @@ configure_hostname() {
 configure_network() {
     local links
     local options
-    if [ -z $NETWORK_INTERFACE ]; then
+    if [ -z "$NETWORK_INTERFACE" ]; then
         # TO IMPROVE
         mapfile -t links < <( ip route show | grep "default via " | awk -F " " '{print $5}' )
         if [ ${#links[@]} -eq 1 ]; then
@@ -188,6 +189,22 @@ configure_apt_sources() {
     echo "deb http://archive.ubuntu.com/ubuntu bionic-updates main universe" >> /mnt/etc/apt/sources.list
 }
 
+set_root_password() {
+    local firstTry
+    local secondTry
+    until [ ! -z "$ROOT_PASSWORD" ]; do
+        firstTry=$(whiptail --passwordbox \
+            "Enter password for root user" 8 78 "" \
+            --title "Choose root password" 3>&1 1>&2 2>&3)
+        secondTry=$(whiptail --passwordbox \
+            "Confirm password for root user" 8 78 "" \
+            --title "Choose root password" 3>&1 1>&2 2>&3)
+        if [ "$firstTry" == "$secondTry" ]; then
+            ROOT_PASSWORD=$firstTry
+        fi
+    done
+}
+
 prepare_for_chroot() {
     mount --rbind /dev  /mnt/dev
     mount --rbind /proc /mnt/proc
@@ -196,7 +213,7 @@ prepare_for_chroot() {
 }
 
 chroot_install() {
-    TARGET_DISK="$TARGET_DISK" chroot /mnt /chroot-install.sh
+    TARGET_DISK="$TARGET_DISK" ROOT_PASSWORD="$ROOT_PASSWORD" chroot /mnt /chroot-install.sh
 }
 
 main() {
@@ -223,6 +240,8 @@ main() {
     configure_network
 
     configure_apt_sources
+
+    set_root_password
 
     prepare_for_chroot
 
