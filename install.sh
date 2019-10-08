@@ -216,6 +216,11 @@ chroot_install() {
     TARGET_DISK="$TARGET_DISK" ROOT_PASSWORD="$ROOT_PASSWORD" chroot /mnt /chroot-install.sh
 }
 
+unmount_all_filesystems() {
+    mount | grep -v zfs | tac | awk '/\/mnt/ {print $3}' | xargs -i{} umount -lf {}
+    zpool export -a
+}
+
 main() {
     check_root
 
@@ -246,6 +251,10 @@ main() {
     prepare_for_chroot
 
     chroot_install
+
+    unmount_all_filesystems
+
+    reboot
 }
 
 main

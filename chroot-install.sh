@@ -92,6 +92,18 @@ install_boot_loader() {
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ubuntu --recheck --no-floppy
 }
 
+fix_filesystem_mount_ordering() {
+    umount /boot/efi
+
+    zfs set mountpoint=legacy bpool/BOOT/ubuntu
+    echo "bpool/BOOT/ubuntu /boot   zfs     nodev,relatime,x-systemd.requires=zfs-import-bpool.service  0   0" >> /etc/fstab
+}
+
+snapshot_initial_installation() {
+    zfs snapshot bpool/BOOT/ubuntu@install
+    zfs snapshot rpool/ROOT/ubuntu@install
+}
+
 main() {
 
     symlink_mtab
@@ -119,6 +131,10 @@ main() {
     update_grub_config
 
     install_boot_loader
+
+    fix_filesystem_mount_ordering
+
+    snapshot_initial_installation
 }
 
 main
