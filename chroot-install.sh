@@ -64,6 +64,11 @@ EOT
 systemctl enable zfs-import-bpool.service
 }
 
+mount_tmp_in_tmpfs() {
+    cp /usr/share/systemd/tmp.mount /etc/systemd/system/
+    systemctl enable tmp.mount
+}
+
 main() {
 
     symlink_mtab
@@ -81,6 +86,8 @@ main() {
     set_root_password
 
     enable_importing_bpool
+
+    mount_tmp_in_tmpfs
 }
 
 main
