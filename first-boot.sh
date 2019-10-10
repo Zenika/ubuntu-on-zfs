@@ -5,16 +5,40 @@
 # instead of continuing the installation with something broken
 set -e
 
+create_user() {
+    local username=user
+    apt install -y whois
+    # TODO NO hardcoded password!
+    useradd -m -p "$(mkpasswd -m sha-512 zenika)" -s /bin/bash "$username"
+    usermod -a -G adm,cdrom,dip,lpadmin,plugdev,sambashare,sudo "$username"
+}
 
+full_install() {
+    apt update
+    apt full-upgrade -y
+    apt install -y ubuntu-desktop
+}
+
+configure_network() {
+    cat <<EOT > /etc/netplan/01-netcfg.yaml
+network:
+  version: 2
+  renderer: NetworkManager
+EOT
+}
 
 clean_itself() {
     rm /usr/local/first-boot.sh
 }
 
 main() {
-    echo "Coucou !"
+    create_user
 
-    #clean_itself
+    full_install
+
+    configure_network
+
+    clean_itself
 }
 
 main
