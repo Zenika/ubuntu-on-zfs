@@ -28,7 +28,7 @@ EOT
 }
 
 clean_itself() {
-    rm /usr/local/first-boot.sh
+    rm /etc/profile.d/finish-install.sh
 }
 
 main() {
@@ -39,6 +39,8 @@ main() {
     configure_network
 
     clean_itself
+
+    reboot
 }
 
 main

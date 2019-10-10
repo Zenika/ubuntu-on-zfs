@@ -130,24 +130,6 @@ fix_filesystem_mount_ordering() {
     echo "bpool/BOOT/ubuntu /boot   zfs     nodev,relatime,x-systemd.requires=zfs-import-bpool.service  0   0" >> /etc/fstab
 }
 
-prepare_first_boot_service() {
-    cat <<EOT >> /etc/systemd/system/first-boot.service
-[Unit]
-Description=first-boot
-ConditionPathExists=/usr/local/first-boot.sh
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/local/first-boot.sh
-
-[Install]
-WantedBy=multi-user.target
-
-EOT
-    systemctl enable first-boot.service
-}
-
 install_additional_packages() {
     apt install -y vim bash-completion
 }
@@ -188,8 +170,6 @@ main() {
     install_boot_loader
 
     fix_filesystem_mount_ordering
-
-    prepare_first_boot_service
 
     install_additional_packages
 

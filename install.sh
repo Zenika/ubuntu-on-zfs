@@ -212,8 +212,8 @@ prepare_for_chroot() {
     mount --rbind /sys  /mnt/sys
     cp chroot-install.sh /mnt
     chmod u+x /mnt/chroot-install.sh
-    cp first-boot.sh /mnt/usr/local/
-    chmod u+x /mnt/usr/local/first-boot.sh
+    cp finish-install.sh /mnt/etc/profile.d/
+    chmod u+x /mnt/etc/profile.d/finish-install.sh
 }
 
 chroot_install() {
