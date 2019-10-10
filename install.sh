@@ -180,8 +180,8 @@ configure_network() {
 network:
   version: 2
   ethernets:
-  ${NETWORK_INTERFACE}:
-    dhcp4: true
+    ${NETWORK_INTERFACE}:
+      dhcp4: true
 EOT
 }
 
@@ -211,6 +211,9 @@ prepare_for_chroot() {
     mount --rbind /proc /mnt/proc
     mount --rbind /sys  /mnt/sys
     cp chroot-install.sh /mnt
+    chmod u+x /mnt/chroot-install.sh
+    cp first-boot.sh /mnt/usr/local/
+    chmod u+x /mnt/usr/local/first-boot.sh
 }
 
 chroot_install() {
