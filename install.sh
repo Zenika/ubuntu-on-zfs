@@ -175,13 +175,14 @@ configure_network() {
     fi
 
     mkdir -p /mnt/etc/netplan/
-    { \
-        echo "network:"; \
-        echo "  version: 2"; \
-        echo "  ethernets:"; \
-        echo "    ${NETWORK_INTERFACE}:"; \
-        echo "      dhcp4: true"; \
-    } >> /mnt/etc/netplan/01-netcfg.yaml
+
+    cat <<EOT >> /mnt/etc/netplan/01-netcfg.yaml
+network:
+  version: 2
+  ethernets:
+  ${NETWORK_INTERFACE}:
+    dhcp4: true
+EOT
 }
 
 configure_apt_sources() {
