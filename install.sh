@@ -10,9 +10,7 @@ set -e
 #   e.g: /dev/disk/by-id/nvme-KXG50ZNV512G_NVMe_TOSHIBA_512GB_Z74B602VKQJS
 # TARGET_HOSTNAME host name of the machine to be installed
 #   e.g: laptop-1
-# NETWORK_INTERFACE network interface to use for install
-#   e.g: wlp2s0
-# ROOT_PASSWORD root password
+# USER_PASSWORD user password
 
 check_root() {
     if [[ "${EUID}" -ne 0 ]]; then
@@ -151,40 +149,6 @@ configure_hostname() {
     echo "127.0.1.1       ${TARGET_HOSTNAME}" >> /mnt/etc/hosts
 }
 
-configure_network() {
-    local links
-    local options
-    if [ -z "$NETWORK_INTERFACE" ]; then
-        # TO IMPROVE
-        mapfile -t links < <( ip route show | grep "default via " | awk -F " " '{print $5}' )
-        if [ ${#links[@]} -eq 1 ]; then
-            NETWORK_INTERFACE=${links[0]}
-        elif [ ${#links[@]} -gt 1 ]; then
-            for i in "${!links[@]}"; do
-                options+=("${links[i]}")
-                options+=("")
-            done
-            NETWORK_INTERFACE=$(whiptail --title "Network interface" --menu \
-                "Choose the network interface to use for install" 20 78 ${#links[@]} \
-                "${options[@]}" \
-                3>&1 1>&2 2>&3)
-        else
-            echo "Unable to find a suitable network interface"
-            exit 1
-        fi
-    fi
-
-    mkdir -p /mnt/etc/netplan/
-
-    cat <<EOT >> /mnt/etc/netplan/01-netcfg.yaml
-network:
-  version: 2
-  ethernets:
-    ${NETWORK_INTERFACE}:
-      dhcp4: true
-EOT
-}
-
 configure_apt_sources() {
     cat <<EOT > /mnt/etc/apt/sources.list
 deb http://fr.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse
@@ -194,18 +158,18 @@ deb http://security.ubuntu.com/ubuntu bionic-security main restricted universe m
 EOT
 }
 
-set_root_password() {
+set_user_password() {
     local firstTry
     local secondTry
-    until [ ! -z "$ROOT_PASSWORD" ]; do
+    until [ ! -z "$USER_PASSWORD" ]; do
         firstTry=$(whiptail --passwordbox \
-            "Enter password for root user" 8 78 "" \
-            --title "Choose root password" 3>&1 1>&2 2>&3)
+            "Enter password for default user" 8 78 "" \
+            --title "Choose user password" 3>&1 1>&2 2>&3)
         secondTry=$(whiptail --passwordbox \
-            "Confirm password for root user" 8 78 "" \
-            --title "Choose root password" 3>&1 1>&2 2>&3)
+            "Confirm password for default user" 8 78 "" \
+            --title "Choose user password" 3>&1 1>&2 2>&3)
         if [ "$firstTry" == "$secondTry" ]; then
-            ROOT_PASSWORD=$firstTry
+            USER_PASSWORD=$firstTry
         fi
     done
 }
@@ -219,7 +183,7 @@ prepare_for_chroot() {
 }
 
 chroot_install() {
-    TARGET_DISK="$TARGET_DISK" ROOT_PASSWORD="$ROOT_PASSWORD" chroot /mnt /chroot-install.sh
+    TARGET_DISK="$TARGET_DISK" USER_PASSWORD="$USER_PASSWORD" chroot /mnt /chroot-install.sh
 }
 
 clean_chroot() {
@@ -252,11 +216,9 @@ main() {
 
     configure_hostname
 
-    configure_network
-
     configure_apt_sources
 
-    set_root_password
+    set_user_password
 
     prepare_for_chroot
 

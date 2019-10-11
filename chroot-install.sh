@@ -72,10 +72,6 @@ install_grub() {
     apt install --yes grub-efi-amd64-signed shim-signed
 }
 
-set_root_password() {
-    echo "root:$ROOT_PASSWORD" | chpasswd
-}
-
 enable_importing_bpool() {
     cat <<EOT >> /etc/systemd/system/zfs-import-bpool.service
 [Unit]
@@ -132,9 +128,10 @@ fix_filesystem_mount_ordering() {
 
 create_user() {
     local username=user
+    local password
     apt install -y whois
-    # TODO NO hardcoded password!
-    useradd -m -p "$(mkpasswd -m sha-512 zenika)" -s /bin/bash "$username"
+    password=$(mkpasswd -m sha-512 "$USER_PASSWORD")
+    useradd -m -p "$password" -s /bin/bash "$username"
     usermod -a -G adm,cdrom,dip,lpadmin,plugdev,sambashare,sudo "$username"
 }
 
@@ -142,6 +139,11 @@ full_install() {
     apt update
     apt full-upgrade -y
     apt install -y ubuntu-desktop vim bash-completion
+}
+
+clean_some_stuff() {
+    # Get rid of the amazon shortcut in favourites
+    rm -f /usr/share/applications/ubuntu-amazon-default.desktop
 }
 
 configure_network() {
@@ -173,8 +175,6 @@ main() {
 
     install_grub
 
-    set_root_password
-
     enable_importing_bpool
 
     mount_tmp_in_tmpfs
@@ -192,6 +192,8 @@ main() {
     create_user
 
     full_install
+
+    clean_some_stuff
 
     configure_network
 
