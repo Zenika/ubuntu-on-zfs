@@ -130,8 +130,26 @@ fix_filesystem_mount_ordering() {
     echo "bpool/BOOT/ubuntu /boot   zfs     nodev,relatime,x-systemd.requires=zfs-import-bpool.service  0   0" >> /etc/fstab
 }
 
-install_additional_packages() {
-    apt install -y vim bash-completion
+create_user() {
+    local username=user
+    apt install -y whois
+    # TODO NO hardcoded password!
+    useradd -m -p "$(mkpasswd -m sha-512 zenika)" -s /bin/bash "$username"
+    usermod -a -G adm,cdrom,dip,lpadmin,plugdev,sambashare,sudo "$username"
+}
+
+full_install() {
+    apt update
+    apt full-upgrade -y
+    apt install -y ubuntu-desktop vim bash-completion
+}
+
+configure_network() {
+    cat <<EOT > /etc/netplan/01-netcfg.yaml
+network:
+  version: 2
+  renderer: NetworkManager
+EOT
 }
 
 snapshot_initial_installation() {
@@ -171,7 +189,11 @@ main() {
 
     fix_filesystem_mount_ordering
 
-    install_additional_packages
+    create_user
+
+    full_install
+
+    configure_network
 
     snapshot_initial_installation
 }

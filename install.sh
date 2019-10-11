@@ -186,8 +186,12 @@ EOT
 }
 
 configure_apt_sources() {
-    echo "deb http://security.ubuntu.com/ubuntu bionic-security main universe" >> /mnt/etc/apt/sources.list
-    echo "deb http://archive.ubuntu.com/ubuntu bionic-updates main universe" >> /mnt/etc/apt/sources.list
+    cat <<EOT > /mnt/etc/apt/sources.list
+deb http://fr.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse
+deb http://fr.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse
+deb http://fr.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu bionic-security main restricted universe multiverse
+EOT
 }
 
 set_root_password() {
@@ -212,8 +216,6 @@ prepare_for_chroot() {
     mount --rbind /sys  /mnt/sys
     cp chroot-install.sh /mnt
     chmod u+x /mnt/chroot-install.sh
-    cp finish-install.sh /mnt/etc/profile.d/
-    chmod u+x /mnt/etc/profile.d/finish-install.sh
 }
 
 chroot_install() {
