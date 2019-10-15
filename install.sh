@@ -180,6 +180,8 @@ prepare_for_chroot() {
     mount --rbind /sys  /mnt/sys
     cp chroot-install.sh /mnt
     chmod u+x /mnt/chroot-install.sh
+    cp zfs-scripts/* /mnt/usr/local/bin/
+    chmod u+x /mnt/usr/local/bin/*
 }
 
 chroot_install() {
