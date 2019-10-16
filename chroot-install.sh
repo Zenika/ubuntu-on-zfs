@@ -154,6 +154,17 @@ network:
 EOT
 }
 
+tune_zfs_config() {
+    # Memory used by ZFS should be limited
+    # see https://www.solaris-cookbook.eu/linux/linux-ubuntu/debian-ubuntu-centos-zfs-on-linux-zfs-limit-arc-cache/
+
+    cat <<EOF > /etc/modprobe.d/zfs.conf
+options zfs zfs_arc_max=4294967296
+EOF
+    # see https://serverfault.com/questions/581669/why-isnt-the-arc-max-setting-honoured-on-zfs-on-linux#comment1108614_602457
+    refresh_initrd_files
+}
+
 snapshot_initial_installation() {
     zfs snapshot bpool/BOOT/ubuntu@install
     zfs snapshot rpool/ROOT/ubuntu@install
@@ -196,6 +207,8 @@ main() {
     clean_some_stuff
 
     configure_network
+
+    tune_zfs_config
 
     snapshot_initial_installation
 }
