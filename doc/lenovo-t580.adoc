@@ -3,7 +3,6 @@
 :toc-title: Table des matières
 :toclevels: 3
 :experimental:
-:revdate: {localdate}
 :icons: font
 :pagenums:
 
