@@ -7,9 +7,46 @@
 :icons: font
 :pagenums:
 
+Documentation et scripts d'installation Ubuntu sur ZFS pour les PC de formation.
+
+== Présentation
+
+Les scripts _bash_ présent dans le répertoire `scripts` de ce projet permettent
+d'installer Ubuntu sur un système de fichier ZFS, qui offre des possibilités
+de _snapshot_ et de _rollback_ idéales dans le contexte des PC utilisés en
+formation.
+Le répertoire `doc` contient la documentation spécifique aux différents modèles 
+de PC utilisés chez Zenika pour les formations. 
+
 == Contraintes
 
-* Démarrer en mode UEFI
+- le script `install.sh` utilise la totalité du disque pour l'installation ;
+- l'installation nécessite une connexion à Internet ;
+- pour dérouler l'installation, il faut télécharger une image disque
+link:http://releases.ubuntu.com/18.04/ubuntu-18.04.2-desktop-amd64.iso[d'Ubuntu 18.04 64 bits Desktop,window=_blank],
+et créer une clé USB de démarrage à partir de cette image
+footnote:[Didacticiel de création d'une clé USB de démarrage d'Ubuntu : https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-ubuntu].
+
+== Installation
+
+. Démarrer une session _live_ à l'aide de la clé USB de démarrage d'Ubuntu ;
++
+IMPORTANT: la session _live_ doit être lancée en mode UEFI.
+. une fois la session démarrée, installer Git ;
+. cloner ce projet ;
+. ouvrir un terminal, aller dans le sous-répertoire `scripts` de ce projet et exécuter le script d'installation :
++
+```shell
+$ sudo ./install.sh
+```
++
+Par défaut l'installation est interactive et vous demande les éléments
+suivants :
+
+* chemin du disque sur lequel dérouler l'installation ;
+* nom d'hôte à donner à l'ordinateur (p.ex. « pc-formation-1 ») ;
+* mot de passe à attribuer à l'unique utilisateur `user` créé lors de
+l'installation.
 
 [appendix]
 == Références
