@@ -26,6 +26,24 @@ link:http://releases.ubuntu.com/18.04/ubuntu-18.04.2-desktop-amd64.iso[d'Ubuntu 
 et créer une clé USB de démarrage à partir de cette image
 footnote:[Didacticiel de création d'une clé USB de démarrage d'Ubuntu : https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-ubuntu].
 
+[NOTE]
+====
+Le script d'installation est une implémentation simplifiée du didacticiel
+proposé par `zfsonlinux` intitulé « Ubuntu 18.04 Root on ZFS »
+<<ubuntu-on-zfs-tutorial>>.
+
+Simplifiée, car contrairement au didacticiel qui propose une hiérarchie complexe
+de _datasets_ ZFS pour le système de fichiers, le script d'installation se
+contente de deux _datasets_ :
+
+* un premier _dataset_ `bpool/BOOT/ubuntu` monté sur `/boot` ;
+* un second `rpool/ROOT/ubuntu` monté sur `/`.
+
+Cette simplification de la structure des _datasets_ ZFS est acceptable dans le
+cas qui nous intéresse, à savoir des PC destinés à être continuellement
+restaurés à un état donné, au fil des formations dispensées.
+====
+
 == Installation
 
 . Démarrer une session _live_ à l'aide de la clé USB de démarrage d'Ubuntu ;
@@ -48,9 +66,11 @@ suivants :
 l'installation.
 
 [appendix]
+[references]
 == Références
 
-* Ubuntu 18.04 Root on ZFS : https://github.com/zfsonlinux/zfs/wiki/Ubuntu-18.04-Root-on-ZFS
+[bibliography]
+* [[[ubuntu-on-zfs-tutorial,1]]] Ubuntu 18.04 Root on ZFS : https://github.com/zfsonlinux/zfs/wiki/Ubuntu-18.04-Root-on-ZFS
 * manpage `zpool` : http://manpages.ubuntu.com/manpages/bionic/man8/zpool.8.html
 * manpage `zpool-features` : http://manpages.ubuntu.com/manpages/bionic/man5/zpool-features.5.html
 * manpage `zfs` : http://manpages.ubuntu.com/manpages/bionic/man8/zfs.8.html
