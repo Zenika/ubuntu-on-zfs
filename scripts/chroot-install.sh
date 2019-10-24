@@ -166,8 +166,8 @@ EOF
 }
 
 snapshot_initial_installation() {
-    zfs snapshot bpool/BOOT/ubuntu@install
-    zfs snapshot rpool/ROOT/ubuntu@install
+    zfs snapshot bpool/BOOT/ubuntu@current
+    zfs snapshot rpool/ROOT/ubuntu@current
 }
 
 main() {
