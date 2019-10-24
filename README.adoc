@@ -1,0 +1,76 @@
+= Installation des PC de formations
+:toc: left
+:toc-title: Table des matières
+:toclevels: 3
+:experimental:
+:icons: font
+:pagenums:
+
+Documentation et scripts d'installation Ubuntu sur ZFS pour les PC de formation.
+
+== Présentation
+
+Les scripts _bash_ présent dans le répertoire `scripts` de ce projet permettent
+d'installer Ubuntu sur un système de fichier ZFS, qui offre des possibilités
+de _snapshot_ et de _rollback_ idéales dans le contexte des PC utilisés en
+formation.
+Le répertoire `doc` contient la documentation spécifique aux différents modèles 
+de PC utilisés chez Zenika pour les formations. 
+
+== Contraintes
+
+- le script `install.sh` utilise la totalité du disque pour l'installation ;
+- l'installation nécessite une connexion à Internet ;
+- pour dérouler l'installation, il faut télécharger une image disque
+link:http://releases.ubuntu.com/18.04/ubuntu-18.04.2-desktop-amd64.iso[d'Ubuntu 18.04 64 bits Desktop,window=_blank],
+et créer une clé USB de démarrage à partir de cette image
+footnote:[Didacticiel de création d'une clé USB de démarrage d'Ubuntu : https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-ubuntu].
+
+[NOTE]
+====
+Le script d'installation est une implémentation simplifiée du didacticiel
+proposé par `zfsonlinux` intitulé « Ubuntu 18.04 Root on ZFS »
+<<ubuntu-on-zfs-tutorial>>.
+
+Simplifiée, car contrairement au didacticiel qui propose une hiérarchie complexe
+de _datasets_ ZFS pour le système de fichiers, le script d'installation se
+contente de deux _datasets_ :
+
+* un premier _dataset_ `bpool/BOOT/ubuntu` monté sur `/boot` ;
+* un second `rpool/ROOT/ubuntu` monté sur `/`.
+
+Cette simplification de la structure des _datasets_ ZFS est acceptable dans le
+cas qui nous intéresse, à savoir des PC destinés à être continuellement
+restaurés à un état donné, au fil des formations dispensées.
+====
+
+== Installation
+
+. Démarrer une session _live_ à l'aide de la clé USB de démarrage d'Ubuntu ;
++
+IMPORTANT: la session _live_ doit être lancée en mode UEFI.
+. une fois la session démarrée, installer Git ;
+. cloner ce projet ;
+. ouvrir un terminal, aller dans le sous-répertoire `scripts` de ce projet et exécuter le script d'installation :
++
+```shell
+$ sudo ./install.sh
+```
++
+Par défaut l'installation est interactive et vous demande les éléments
+suivants :
+
+* chemin du disque sur lequel dérouler l'installation ;
+* nom d'hôte à donner à l'ordinateur (p.ex. « pc-formation-1 ») ;
+* mot de passe à attribuer à l'unique utilisateur `user` créé lors de
+l'installation.
+
+[appendix]
+[references]
+== Références
+
+[bibliography]
+* [[[ubuntu-on-zfs-tutorial,1]]] Ubuntu 18.04 Root on ZFS : https://github.com/zfsonlinux/zfs/wiki/Ubuntu-18.04-Root-on-ZFS
+* manpage `zpool` : http://manpages.ubuntu.com/manpages/bionic/man8/zpool.8.html
+* manpage `zpool-features` : http://manpages.ubuntu.com/manpages/bionic/man5/zpool-features.5.html
+* manpage `zfs` : http://manpages.ubuntu.com/manpages/bionic/man8/zfs.8.html
