@@ -12,6 +12,10 @@ set -e
 #   e.g: laptop-1
 # USER_PASSWORD user password
 
+readonly PROGNAME=$(basename "$0")
+readonly PROGDIR=$(readlink -m "$(dirname "$0")")
+readonly ARGS=("$@")
+
 check_root() {
     if [[ "${EUID}" -ne 0 ]]; then
         echo "Script must be executed with root privileges"
@@ -185,7 +189,10 @@ prepare_for_chroot() {
 }
 
 chroot_install() {
-    TARGET_DISK="$TARGET_DISK" USER_PASSWORD="$USER_PASSWORD" chroot /mnt /chroot-install.sh
+    chroot /mnt /usr/bin/env \
+        TARGET_DISK="$TARGET_DISK" \
+        USER_PASSWORD="$USER_PASSWORD" \
+        /chroot-install.sh
 }
 
 clean_chroot() {
@@ -197,8 +204,68 @@ unmount_all_filesystems() {
     zpool export -a
 }
 
+cmdline() {
+    # Adapted from http://kfirlavi.herokuapp.com/blog/2012/11/14/defensive-bash-programming/
+    local arg
+    local args
+    local option
+    local OPTIND
+    local OPTARG
+
+    for arg in "${ARGS[@]}"; do
+        local delim=""
+        case "$arg" in
+            # Translate --some-long-option to -s (short options)
+            --disk)
+                args="${args}-d "
+                ;;
+            --hostname)
+                args="${args}-h "
+                ;;
+            --password)
+                args="${args}-p "
+                ;;
+            # Pass through anything else
+            *)
+                [[ "${arg:0:1}" == "-" ]] || delim="\""
+                args="${args}${delim}${arg}${delim} "
+                ;;
+        esac
+    done
+
+    # Reset the positional parameters to the short options
+    eval set -- "$args"
+
+    # Great getopts examples here: https://www.quennec.fr/book/export/html/341
+    while getopts ":d:h:p:" option; do
+        case $option in
+        d)
+            readonly TARGET_DISK="$OPTARG"
+            ;;
+        h)
+            readonly TARGET_HOSTNAME="$OPTARG"
+            ;;
+        p)
+            readonly USER_PASSWORD="$OPTARG"
+            ;;
+        :)
+            echo "-$OPTARG: missing argument"
+            exit 1
+            ;;
+        \?)
+            echo "-$OPTARG: invalid option"
+            exit 1
+            ;;
+        esac
+    done
+}
+
+
 main() {
+
     check_root
+
+    cmdline
 
     dependencies
 
@@ -229,8 +296,6 @@ main() {
     clean_chroot
 
     unmount_all_filesystems
-
-    #reboot
 }
 
 main
