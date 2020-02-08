@@ -5,13 +5,6 @@
 # instead of continuing the installation with something broken
 set -e
 
-# List of supported environment variables
-# TARGET_DISK path of the block device on which Ubuntu is to be installed (full disk).
-#   e.g: /dev/disk/by-id/nvme-KXG50ZNV512G_NVMe_TOSHIBA_512GB_Z74B602VKQJS
-# TARGET_HOSTNAME host name of the machine to be installed
-#   e.g: laptop-1
-# USER_PASSWORD user password
-
 readonly PROGNAME=$(basename "$0")
 readonly PROGDIR=$(readlink -m "$(dirname "$0")")
 readonly ARGS=("$@")
@@ -204,6 +197,42 @@ unmount_all_filesystems() {
     zpool export -a
 }
 
+usage() {
+    # Do NOT replace TAB characters with spaces in the following block
+    cat <<- EOF
+	USAGE
+        $PROGNAME [-d <block device path>]
+                  [-n <host name>]
+                  [-p <password>]
+                  [-h]
+
+	DESCRIPTION
+        Program performs a basic install of Ubuntu on a ZFS file system.
+        Install is automatic if all options are specified, else it is interactive.
+
+	OPTIONS:
+        --disk, -d                  path of the block device on which Ubuntu is to be installed.
+        or TARGET DISK env var      CAUTION: the block device specified must be a full disk
+
+        --hostname, -n              host name of the machine to be installed.
+        or TARGET_HOSTNAME env var
+
+        --password, -p              user password
+        or USER_PASSWORD env var
+
+        --help, -h                  display this help
+
+        IMPORTANT: command line argument takes precedence over the corresponding env var
+
+	EXAMPLES:
+        All options specified:
+        $PROGNAME --disk /dev/disk/by-id/nvme-KXG50ZNV512G_NVMe_TOSHIBA_512GB_Z74B602VKQJS \\
+                  --hostname laptop-1 \\
+                  --password somepassword
+	EOF
+}
+
+
 cmdline() {
     # Adapted from http://kfirlavi.herokuapp.com/blog/2012/11/14/defensive-bash-programming/
     local arg
@@ -212,7 +241,9 @@ cmdline() {
     local OPTIND
     local OPTARG
 
-    for arg in "${ARGS[@]}"; do
+    # `for arg; do ... done` means exactly the same as `for arg in "$@"; do ...; done`
+    for arg 
+    do
         local delim=""
         case "$arg" in
             # Translate --some-long-option to -s (short options)
@@ -220,10 +251,13 @@ cmdline() {
                 args="${args}-d "
                 ;;
             --hostname)
-                args="${args}-h "
+                args="${args}-n "
                 ;;
             --password)
                 args="${args}-p "
+                ;;
+            --help)
+                args="${args}-h "
                 ;;
             # Pass through anything else
             *)
@@ -237,12 +271,16 @@ cmdline() {
     eval set -- "$args"
 
     # Great getopts examples here: https://www.quennec.fr/book/export/html/341
-    while getopts ":d:h:p:" option; do
+    while getopts ":hd:n:p:" option; do
         case $option in
+        h)
+            usage
+            exit 0
+            ;;
         d)
             readonly TARGET_DISK="$OPTARG"
             ;;
-        h)
+        n)
             readonly TARGET_HOSTNAME="$OPTARG"
             ;;
         p)
@@ -265,7 +303,7 @@ main() {
 
     check_root
 
-    cmdline
+    cmdline "${ARGS[@]}"
 
     dependencies
 
