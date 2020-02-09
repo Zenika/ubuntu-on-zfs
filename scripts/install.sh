@@ -158,7 +158,7 @@ EOT
 set_user_password() {
     local firstTry
     local secondTry
-    until [ ! -z "$USER_PASSWORD" ]; do
+    until [ -n "$USER_PASSWORD" ]; do
         firstTry=$(whiptail --passwordbox \
             "Enter password for default user" 8 78 "" \
             --title "Choose user password" 3>&1 1>&2 2>&3)
@@ -242,8 +242,7 @@ cmdline() {
     local OPTARG
 
     # `for arg; do ... done` means exactly the same as `for arg in "$@"; do ...; done`
-    for arg 
-    do
+    for arg; do
         local delim=""
         case "$arg" in
             # Translate --some-long-option to -s (short options)
