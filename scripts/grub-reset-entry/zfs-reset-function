@@ -1,0 +1,43 @@
+#!/usr/bin/ash
+
+restore_zfs_snapshots_then_poweroff() {
+
+  echo
+  echo "Initializing pools..."
+  zpool import bpool
+  zpool import rpool
+
+  echo
+  echo "ZFS filesystems list:"
+  zfs list
+
+  echo
+  echo "Restoring 'current' snapshots..."
+  zfs rollback 'bpool/BOOT/ubuntu@current'
+  zfs rollback 'rpool/ROOT/ubuntu@current'
+
+  echo
+  echo "Removing extra filesystems..."
+  # `zfs list -o origin,name` lists zfs filesystems and display name and origin attributes:
+  # NAME                                                                                     ORIGIN
+  # bpool                                                                                    -
+  # bpool/BOOT                                                                               -
+  # bpool/BOOT/ubuntu                                                                        -
+  # rpool                                                                                    -
+  # rpool/ROOT                                                                               -
+  # rpool/ROOT/ubuntu                                                                        -
+  # rpool/ROOT/ubuntu/75f4c7bdb8be4bfe83d4e7141da6a0cd1a48c0db204cbf05e23da44b72f777bd       -
+  # rpool/ROOT/ubuntu/db73904884d200ec6f939c68622a0da7ad0a451210627943fdf36555d5d8482d       rpool/ROOT/ubuntu/db73904884d200ec6f939c68622a0da7ad0a451210627943fdf36555d5d8482d-init@264377718
+  # rpool/ROOT/ubuntu/db73904884d200ec6f939c68622a0da7ad0a451210627943fdf36555d5d8482d-init  rpool/ROOT/ubuntu/75f4c7bdb8be4bfe83d4e7141da6a0cd1a48c0db204cbf05e23da44b72f777bd@166967554
+  # `grep -E '\-$'` keeps 'root' filesystems
+  # `cut -d' ' -f1` keeps the filesystem name
+  # `grep -E '^rpool/ROOT/ubuntu/.+'` keeps subvolumes of the root volume rpool/ROOT/ubuntu
+  for filesystem in $(zfs list -o name,origin | grep -E '\-$' | cut -d' ' -f1 | grep -E '^rpool/ROOT/ubuntu/.+') ; do
+    zfs destroy -R -p $filesystem
+  done
+
+  echo
+  echo "Shutting down the machine..."
+  poweroff -f
+
+}
