@@ -27,6 +27,10 @@ msg_success() {
   msg "${GREEN}$1${NOFORMAT}"
 }
 
+msg_warning() {
+  msg "${ORANGE}$1${NOFORMAT}"
+}
+
 msg_error() {
   msg "${RED}$1${NOFORMAT}"
 }
@@ -91,7 +95,7 @@ create_partitions() {
     -t1:EF00 \
     "${TARGET_DISK}"
 
-    wait_for_partition "${TARGET_DISK}-part1"
+    wait_for_partition "${TARGET_DISK}-part1000000000"
 
     # Boot pool partition
     sgdisk -n2:0:+2G \
@@ -110,20 +114,34 @@ create_partitions() {
     msg_success "New partitions created!"
 }
 
+retry() {
+  local tries=${1:-10}
+  shift
+
+  if [ "$tries" -le 0 ]; then
+    tries=1
+  fi
+
+  local count=0
+  local wait_seconds
+  until "$@"; do
+    exit=$?
+    wait_seconds=$((2 ** count))
+    if [ "$(((count++)))" -lt "$tries" ]; then
+      msg_warning "Attempt $count/$tries exited $exit, retrying in $wait_seconds seconds…"
+      sleep $wait_seconds
+    else
+      msg_error "Attempt $count/$tries exited $exit, no more tries left."
+      return $exit
+    fi
+  done
+  return 0
+}
+
 # In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev.
 # Let's wait for them to be ready.
 wait_for_partition() {
-    local retry=10
-    local partition=$1
-
-    until [ -b "$partition" ]; do
-        if [ "$(((retry--)))" -eq 0 ]; then
-            msg_error "Timeout waiting for partition"
-            exit 1
-        fi
-        msg_info "Waiting for partition ${partition} to be ready…"
-        sleep 1
-    done
+    retry 10 test -b "$1"
 }
 
 create_zfs_pools() {
