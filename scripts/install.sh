@@ -20,19 +20,19 @@ msg() {
 }
 
 msg_info() {
-  msg "${BLUE}$1${NOFORMAT}"
+  msg "${BLUE}ℹ $1${NOFORMAT}"
 }
 
 msg_success() {
-  msg "${GREEN}$1${NOFORMAT}"
+  msg "${GREEN}✅ $1${NOFORMAT}"
 }
 
 msg_warning() {
-  msg "${ORANGE}$1${NOFORMAT}"
+  msg "${ORANGE}⚠  $1${NOFORMAT}"
 }
 
 msg_error() {
-  msg "${RED}$1${NOFORMAT}"
+  msg "${RED}🚨 $1${NOFORMAT}"
 }
 
 check_root() {
