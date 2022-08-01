@@ -95,21 +95,15 @@ create_partitions() {
     -t1:EF00 \
     "${TARGET_DISK}"
 
-    wait_for_partition "${TARGET_DISK}-part1000000000"
-
     # Boot pool partition
     sgdisk -n2:0:+2G \
     -t2:BE00 \
     "${TARGET_DISK}"
 
-    wait_for_partition "${TARGET_DISK}-part2"
-
     # Root pool partition
     sgdisk -n3:0:0 \
     -t3:BF00 \
     "${TARGET_DISK}"
-
-    wait_for_partition "${TARGET_DISK}-part2"
 
     msg_success "New partitions created!"
 }
@@ -127,28 +121,23 @@ retry() {
   until "$@"; do
     exit=$?
     wait_seconds=$((2 ** count))
-    if [ "$(((count++)))" -lt "$tries" ]; then
+    if [ "$(((++count)))" -lt "$tries" ]; then
       msg_warning "Attempt $count/$tries exited $exit, retrying in $wait_seconds seconds…"
       sleep $wait_seconds
     else
-      msg_error "Attempt $count/$tries exited $exit, no more tries left."
+      msg_error "Attempt $count/$tries exited $exit, no more attempt left."
       return $exit
     fi
   done
   return 0
 }
 
-# In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev.
-# Let's wait for them to be ready.
-wait_for_partition() {
-    retry 10 test -b "$1"
-}
-
 create_zfs_pools() {
 
     msg_info "Creating ZFS pools"
 
-    zpool create \
+    # In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev, so zpool create may fail
+    retry 5 zpool create \
         -o ashift=12 \
         -o autotrim=on \
         -o cachefile=/etc/zfs/zpool.cache \
@@ -163,7 +152,7 @@ create_zfs_pools() {
         -O canmount=off -O mountpoint=/boot -R /mnt \
         bpool "${TARGET_DISK}-part2"
 
-    zpool create \
+    retry 5 zpool create \
         -o ashift=12 \
         -o autotrim=on \
         -O acltype=posixacl -O xattr=sa -O dnodesize=auto \
