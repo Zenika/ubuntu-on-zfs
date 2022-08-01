@@ -15,24 +15,24 @@ setup_colors() {
   fi
 }
 
-msg() {
+log() {
   echo >&2 -e "${1-}"
 }
 
-msg_info() {
-  msg "${BLUE}ℹ $1${NOFORMAT}"
+log_info() {
+  log "${BLUE}ℹ $1${NOFORMAT}"
 }
 
-msg_success() {
-  msg "${GREEN}✅ $1${NOFORMAT}"
+log_success() {
+  log "${GREEN}✅ $1${NOFORMAT}"
 }
 
-msg_warning() {
-  msg "${ORANGE}⚠  $1${NOFORMAT}"
+log_warning() {
+  log "${ORANGE}⚠  $1${NOFORMAT}"
 }
 
-msg_error() {
-  msg "${RED}🚨 $1${NOFORMAT}"
+log_error() {
+  log "${RED}🚨 $1${NOFORMAT}"
 }
 
 check_root() {
@@ -43,17 +43,17 @@ check_root() {
 }
 
 dependencies() {
-    msg_info "Installing dependencies…"
+    log_info "Installing dependencies…"
     apt-add-repository -y universe
     apt install -y debootstrap gdisk zfs-initramfs
     systemctl stop zed
-    msg_success "Dependencies installed!"
+    log_success "Dependencies installed!"
 }
 
 select_disk() {
     local disks
     local options
-    msg_info "Selecting disk to install on…"
+    log_info "Selecting disk to install on…"
     if [ -z "$TARGET_DISK" ]; then
         shopt -s nullglob
         disks=(/dev/disk/by-id/*)
@@ -70,26 +70,26 @@ select_disk() {
             "${options[@]}" \
             3>&1 1>&2 2>&3)
     fi
-    msg_success "The chosen disk is: ${TARGET_DISK}"
+    log_success "The chosen disk is: ${TARGET_DISK}"
 }
 
 destroy_existing_pools() {
-    msg_info "Destroying existing ZFS pool…"
+    log_info "Destroying existing ZFS pool…"
     zpool import -a
     for pool_name in $(zpool list -H | awk '{print $1}'); do
         zpool destroy "$pool_name"
-        msg_success "Pool \"$pool_name\" destroyed!"
+        log_success "Pool \"$pool_name\" destroyed!"
     done
 }
 
 format_disk() {
-    msg_info "Destroying existing GPT and MBR data structures…"
+    log_info "Destroying existing GPT and MBR data structures…"
     sgdisk --zap-all "${TARGET_DISK}"
-    msg_success "GPT and MBR data structures destroyed!"
+    log_success "GPT and MBR data structures destroyed!"
 }
 
 create_partitions() {
-    msg_info "Creating new partitions…"
+    log_info "Creating new partitions…"
     # Bootloader partition
     sgdisk -n1:1M:+512M \
     -t1:EF00 \
@@ -105,7 +105,7 @@ create_partitions() {
     -t3:BF00 \
     "${TARGET_DISK}"
 
-    msg_success "New partitions created!"
+    log_success "New partitions created!"
 }
 
 retry() {
@@ -122,10 +122,10 @@ retry() {
     exit=$?
     wait_seconds=$((2 ** count))
     if [ "$(((++count)))" -lt "$tries" ]; then
-      msg_warning "Attempt $count/$tries exited $exit, retrying in $wait_seconds seconds…"
+      log_warning "Attempt $count/$tries exited $exit, retrying in $wait_seconds seconds…"
       sleep $wait_seconds
     else
-      msg_error "Attempt $count/$tries exited $exit, no more attempt left."
+      log_error "Attempt $count/$tries exited $exit, no more attempt left."
       return $exit
     fi
   done
@@ -134,7 +134,7 @@ retry() {
 
 create_zfs_pools() {
 
-    msg_info "Creating ZFS pools"
+    log_info "Creating ZFS pools"
 
     # In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev, so zpool create may fail
     retry 5 zpool create \
@@ -162,7 +162,7 @@ create_zfs_pools() {
         -O canmount=off -O mountpoint=/ -R /mnt \
         rpool "${TARGET_DISK}-part3"
 
-    msg_success "New ZFS pools created!"
+    log_success "New ZFS pools created!"
 }
 
 create_zfs_datasets() {
