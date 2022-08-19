@@ -19,6 +19,7 @@ check_root() {
 dependencies() {
     apt-add-repository -y universe
     apt install -y debootstrap gdisk zfs-initramfs
+    systemctl stop zed
 }
 
 select_disk() {
@@ -48,16 +49,19 @@ format_disk() {
 }
 
 create_partitions() {
-    sgdisk -n2:1M:+512M \
-    -t2:EF00 \
+    # Bootloader partition
+    sgdisk -n1:1M:+512M \
+    -t1:EF00 \
     "${TARGET_DISK}"
 
-    sgdisk -n3:0:+512M \
-    -t3:BF01 \
+    # Boot pool partition
+    sgdisk -n2:0:+2G \
+    -t2:BE00 \
     "${TARGET_DISK}"
 
-    sgdisk -n4:0:0 \
-    -t4:BF01 \
+    # Root pool partition
+    sgdisk -n3:0:0 \
+    -t3:BF00 \
     "${TARGET_DISK}"
 }
 
@@ -66,8 +70,8 @@ create_partitions() {
 wait_for_partitions() {
     local retry=10
 
-    until [ -b "$TARGET_DISK-part3" ] \
-        && [ -b "$TARGET_DISK-part4" ]; do
+    until [ -b "$TARGET_DISK-part2" ] \
+        && [ -b "$TARGET_DISK-part3" ]; do
         if [ "$(((retry--)))" -eq 0 ]; then
             echo "Timeout waiting for partitions"
             exit 1
@@ -79,60 +83,59 @@ wait_for_partitions() {
 
 create_zfs_pools() {
 
-    zpool create -f -o ashift=12 \
-      -d \
-      -o feature@async_destroy=enabled \
-      -o feature@bookmarks=enabled \
-      -o feature@embedded_data=enabled \
-      -o feature@empty_bpobj=enabled \
-      -o feature@enabled_txg=enabled \
-      -o feature@extensible_dataset=enabled \
-      -o feature@filesystem_limits=enabled \
-      -o feature@hole_birth=enabled \
-      -o feature@large_blocks=enabled \
-      -o feature@lz4_compress=enabled \
-      -o feature@spacemap_histogram=enabled \
-      -o feature@userobj_accounting=enabled \
-      -O acltype=posixacl \
-      -O canmount=off \
-      -O compression=lz4 \
-      -O devices=off \
-      -O normalization=formD \
-      -O relatime=on \
-      -O xattr=sa \
-      -O mountpoint=/ \
-      -R /mnt \
-      bpool \
-      "${TARGET_DISK}-part3"
+    zpool create \
+        -o ashift=12 \
+        -o autotrim=on \
+        -o cachefile=/etc/zfs/zpool.cache \
+        -o compatibility=grub2 \
+        -o feature@livelist=enabled \
+        -o feature@zpool_checkpoint=enabled \
+        -O devices=off \
+        -O acltype=posixacl -O xattr=sa \
+        -O compression=lz4 \
+        -O normalization=formD \
+        -O relatime=on \
+        -O canmount=off -O mountpoint=/boot -R /mnt \
+        bpool "${TARGET_DISK}-part2"
 
-      zpool create -f -o ashift=12 \
-      -O acltype=posixacl \
-      -O canmount=off \
-      -O compression=lz4 \
-      -O dnodesize=auto \
-      -O normalization=formD \
-      -O relatime=on \
-      -O xattr=sa \
-      -O mountpoint=/ \
-      -R /mnt \
-      rpool \
-      "${TARGET_DISK}-part4"
+    zpool create \
+        -o ashift=12 \
+        -o autotrim=on \
+        -O acltype=posixacl -O xattr=sa -O dnodesize=auto \
+        -O compression=lz4 \
+        -O normalization=formD \
+        -O relatime=on \
+        -O canmount=off -O mountpoint=/ -R /mnt \
+        rpool "${TARGET_DISK}-part3"
 }
 
 create_zfs_datasets() {
-    zfs create -o canmount=off -o mountpoint=none rpool/ROOT
-    zfs create -o canmount=off -o mountpoint=none bpool/BOOT
+    # "Container" fylesystem datasets
+    zfs create -o canmount=off -o mountpoint=none   rpool/ROOT
+    zfs create -o canmount=off -o mountpoint=none   bpool/BOOT
 
-    zfs create -o canmount=noauto -o mountpoint=/ rpool/ROOT/ubuntu
-    zfs mount rpool/ROOT/ubuntu
+    # Filesystem datasets for the root and boot filesystems
+    zfs create -o mountpoint=/                      rpool/ROOT/ubuntu
+    zfs create -o mountpoint=/boot                  bpool/BOOT/ubuntu
 
-    zfs create -o canmount=noauto -o mountpoint=/boot bpool/BOOT/ubuntu
-    zfs mount bpool/BOOT/ubuntu
+    zfs create -o canmount=off                      rpool/ROOT/ubuntu/usr
+    zfs create                                      rpool/ROOT/ubuntu/usr/local
+    zfs create -o canmount=off                      rpool/ROOT/ubuntu/var
+    zfs create                                      rpool/ROOT/ubuntu/var/lib
+    zfs create                                      rpool/ROOT/ubuntu/var/lib/apt
+    zfs create                                      rpool/ROOT/ubuntu/var/lib/docker
+    zfs create                                      rpool/ROOT/ubuntu/var/lib/dpkg
+    zfs create                                      rpool/ROOT/ubuntu/var/lib/AccountsService
+    zfs create                                      rpool/ROOT/ubuntu/var/lib/NetworkManager
+    zfs create                                      rpool/ROOT/ubuntu/var/log
+    zfs create                                      rpool/ROOT/ubuntu/var/snap
+    zfs create                                      rpool/ROOT/ubuntu/var/spool
 }
 
 install_minimum_system() {
-    debootstrap bionic /mnt
-    zfs set devices=off rpool
+    debootstrap jammy /mnt
+    mkdir /mnt/etc/zfs
+    cp /etc/zfs/zpool.cache /mnt/etc/zfs/
 }
 
 configure_hostname() {
@@ -148,10 +151,10 @@ configure_hostname() {
 
 configure_apt_sources() {
     cat <<EOT > /mnt/etc/apt/sources.list
-deb http://fr.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse
-deb http://fr.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse
-deb http://fr.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse
-deb http://security.ubuntu.com/ubuntu bionic-security main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
 EOT
 }
 
@@ -172,9 +175,9 @@ set_user_password() {
 }
 
 prepare_for_chroot() {
-    mount --rbind /dev  /mnt/dev
-    mount --rbind /proc /mnt/proc
-    mount --rbind /sys  /mnt/sys
+    mount --make-private --rbind /dev  /mnt/dev
+    mount --make-private --rbind /proc /mnt/proc
+    mount --make-private --rbind /sys  /mnt/sys
     cp chroot-install.sh /mnt
     chmod u+x /mnt/chroot-install.sh
     cp zfs-scripts/* /mnt/usr/local/bin/
@@ -314,25 +317,25 @@ main() {
 
     wait_for_partitions
 
-    create_zfs_pools
+    #create_zfs_pools
 
-    create_zfs_datasets
+    #create_zfs_datasets
 
-    install_minimum_system
+    #install_minimum_system
 
-    configure_hostname
+    #configure_hostname
 
-    configure_apt_sources
+    #configure_apt_sources
 
-    set_user_password
+    #set_user_password
 
-    prepare_for_chroot
+    #prepare_for_chroot
 
-    chroot_install
+    #chroot_install
 
-    clean_chroot
+    #clean_chroot
 
-    unmount_all_filesystems
+    #unmount_all_filesystems
 }
 
 main
