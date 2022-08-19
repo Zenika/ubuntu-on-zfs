@@ -17,7 +17,7 @@ check_root() {
 }
 
 dependencies() {
-    apt-add-repository universe
+    apt-add-repository -y universe
     apt install -y debootstrap gdisk zfs-initramfs
 }
 
