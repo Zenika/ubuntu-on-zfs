@@ -44,6 +44,14 @@ select_disk() {
     echo "The chosen disk is: ${TARGET_DISK}"
 }
 
+destroy_existing_pools() {
+    zpool import -a
+    for pool_name in $(zpool list -H | awk '{print $1}'); do
+        echo "Destroying pool $pool_name"
+        zpool destroy "$pool_name"
+    done
+}
+
 format_disk() {
     sgdisk --zap-all "${TARGET_DISK}"
 }
@@ -311,13 +319,15 @@ main() {
 
     select_disk
 
+    destroy_existing_pools
+
     format_disk
 
     create_partitions
 
     wait_for_partitions
 
-    #create_zfs_pools
+    create_zfs_pools
 
     #create_zfs_datasets
 
