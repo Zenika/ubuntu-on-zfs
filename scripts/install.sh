@@ -331,21 +331,21 @@ main() {
 
     create_zfs_datasets
 
-    #install_minimum_system
+    install_minimum_system
 
-    #configure_hostname
+    configure_hostname
 
-    #configure_apt_sources
+    configure_apt_sources
 
-    #set_user_password
+    set_user_password
 
-    #prepare_for_chroot
+    prepare_for_chroot
 
-    #chroot_install
+    chroot_install
 
-    #clean_chroot
+    clean_chroot
 
-    #unmount_all_filesystems
+    unmount_all_filesystems
 }
 
 main

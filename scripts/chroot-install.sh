@@ -5,10 +5,6 @@
 # instead of continuing the installation with something broken
 set -e
 
-symlink_mtab() {
-    ln -s /proc/self/mounts /etc/mtab
-}
-
 update_configured_sources() {
     apt update
 }
@@ -170,8 +166,6 @@ snapshot_initial_installation() {
 }
 
 main() {
-
-    symlink_mtab
 
     update_configured_sources
 
