@@ -329,7 +329,7 @@ main() {
 
     create_zfs_pools
 
-    #create_zfs_datasets
+    create_zfs_datasets
 
     #install_minimum_system
 
