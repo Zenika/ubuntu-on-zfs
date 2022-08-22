@@ -1,13 +1,35 @@
 #!/bin/bash
 
-# -e option instructs bash to immediately exit if any command [1] has a non-zero exit status
-# We do not want users to end up with a partially working install, so we exit the script
-# instead of continuing the installation with something broken
 set -e
 
-readonly PROGNAME=$(basename "$0")
-readonly PROGDIR=$(readlink -m "$(dirname "$0")")
+PROGNAME=$(basename "$0")
+readonly PROGNAME
 readonly ARGS=("$@")
+
+setup_colors() {
+  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NOFORMAT='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' ORANGE='\033[0;33m' BLUE='\033[0;34m' PURPLE='\033[0;35m' CYAN='\033[0;36m' YELLOW='\033[1;33m'
+  else
+    # shellcheck disable=SC2034
+    NOFORMAT='' RED='' GREEN='' ORANGE='' BLUE='' PURPLE='' CYAN='' YELLOW=''
+  fi
+}
+
+msg() {
+  echo >&2 -e "${1-}"
+}
+
+msg_info() {
+  msg "${BLUE}$1${NOFORMAT}"
+}
+
+msg_success() {
+  msg "${GREEN}$1${NOFORMAT}"
+}
+
+msg_error() {
+  msg "${RED}$1${NOFORMAT}"
+}
 
 check_root() {
     if [[ "${EUID}" -ne 0 ]]; then
@@ -17,14 +39,17 @@ check_root() {
 }
 
 dependencies() {
+    msg_info "Installing dependencies…"
     apt-add-repository -y universe
     apt install -y debootstrap gdisk zfs-initramfs
     systemctl stop zed
+    msg_success "Dependencies installed!"
 }
 
 select_disk() {
     local disks
     local options
+    msg_info "Selecting disk to install on…"
     if [ -z "$TARGET_DISK" ]; then
         shopt -s nullglob
         disks=(/dev/disk/by-id/*)
@@ -41,55 +66,69 @@ select_disk() {
             "${options[@]}" \
             3>&1 1>&2 2>&3)
     fi
-    echo "The chosen disk is: ${TARGET_DISK}"
+    msg_success "The chosen disk is: ${TARGET_DISK}"
 }
 
 destroy_existing_pools() {
+    msg_info "Destroying existing ZFS pool…"
     zpool import -a
     for pool_name in $(zpool list -H | awk '{print $1}'); do
-        echo "Destroying pool $pool_name"
         zpool destroy "$pool_name"
+        msg_success "Pool \"$pool_name\" destroyed!"
     done
 }
 
 format_disk() {
+    msg_info "Destroying existing GPT and MBR data structures…"
     sgdisk --zap-all "${TARGET_DISK}"
+    msg_success "GPT and MBR data structures destroyed!"
 }
 
 create_partitions() {
+    msg_info "Creating new partitions…"
     # Bootloader partition
     sgdisk -n1:1M:+512M \
     -t1:EF00 \
     "${TARGET_DISK}"
+
+    wait_for_partition "${TARGET_DISK}-part1"
 
     # Boot pool partition
     sgdisk -n2:0:+2G \
     -t2:BE00 \
     "${TARGET_DISK}"
 
+    wait_for_partition "${TARGET_DISK}-part2"
+
     # Root pool partition
     sgdisk -n3:0:0 \
     -t3:BF00 \
     "${TARGET_DISK}"
+
+    wait_for_partition "${TARGET_DISK}-part2"
+
+    msg_success "New partitions created!"
 }
 
 # In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev.
 # Let's wait for them to be ready.
-wait_for_partitions() {
+wait_for_partition() {
     local retry=10
+    local partition=$1
 
-    until [ -b "$TARGET_DISK-part2" ] \
-        && [ -b "$TARGET_DISK-part3" ]; do
+    until [ -b "$partition" ]; do
         if [ "$(((retry--)))" -eq 0 ]; then
-            echo "Timeout waiting for partitions"
+            msg_error "Timeout waiting for partition"
             exit 1
         fi
-        echo "Waiting for partitions to be ready…"
+        msg_info "Waiting for partition ${partition} to be ready…"
         sleep 1
     done
 }
 
 create_zfs_pools() {
+
+    msg_info "Creating ZFS pools"
 
     zpool create \
         -o ashift=12 \
@@ -115,6 +154,8 @@ create_zfs_pools() {
         -O relatime=on \
         -O canmount=off -O mountpoint=/ -R /mnt \
         rpool "${TARGET_DISK}-part3"
+
+    msg_success "New ZFS pools created!"
 }
 
 create_zfs_datasets() {
@@ -204,7 +245,7 @@ clean_chroot() {
 }
 
 unmount_all_filesystems() {
-    mount | grep -v zfs | tac | awk '/\/mnt/ {print $3}' | xargs -i{} umount -lf {}
+    mount | grep -v zfs | tac | awk '/\/mnt/ {print $3}' | xargs -I{} umount -lf {}
     zpool export -a
 }
 
@@ -325,8 +366,6 @@ main() {
 
     create_partitions
 
-    wait_for_partitions
-
     create_zfs_pools
 
     create_zfs_datasets
@@ -347,5 +386,7 @@ main() {
 
     unmount_all_filesystems
 }
+
+setup_colors
 
 main
