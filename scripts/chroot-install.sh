@@ -80,7 +80,7 @@ create_efi_filesystem() {
     mkdosfs -F 32 -s 1 -n EFI "$TARGET_DISK-part1"
     mkdir -p /boot/efi
     echo "/dev/disk/by-uuid/$(blkid -s UUID -o value "$TARGET_DISK-part1")   /boot/efi   vfat    defaults   0   0" >>/etc/fstab
-    mount /boot/efi
+    retry 5 mount /boot/efi
 
     mkdir /boot/efi/grub /boot/grub
     echo "/boot/efi/grub   /boot/grub   none    defaults,bind   0   0" >>/etc/fstab
