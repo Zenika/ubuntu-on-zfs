@@ -406,11 +406,11 @@ main() {
 
     prepare_for_chroot
 
-    #chroot_install
+    chroot_install
 
-    #clean_chroot
+    clean_chroot
 
-    #unmount_all_filesystems
+    unmount_all_filesystems
 }
 
 main

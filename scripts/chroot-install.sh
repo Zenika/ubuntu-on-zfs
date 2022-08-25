@@ -180,11 +180,6 @@ full_install() {
     apt install -y ubuntu-desktop vim bash-completion
 }
 
-clean_some_stuff() {
-    # Get rid of the amazon shortcut in favourites
-    rm -f /usr/share/applications/ubuntu-amazon-default.desktop
-}
-
 configure_network() {
     cat <<EOT >/etc/netplan/01-netcfg.yaml
 network:
@@ -235,13 +230,11 @@ main() {
 
     fix_filesystem_mount_ordering
 
-    #create_user
+    create_user
 
-    #full_install
+    full_install
 
-    #clean_some_stuff
-
-    #configure_network
+    configure_network
 
     #tune_zfs_config
 
