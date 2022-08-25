@@ -148,16 +148,21 @@ install_boot_loader() {
 }
 
 fix_filesystem_mount_ordering() {
+    log_info "Fixing filesystem mount ordering"
 
     mkdir /etc/zfs/zfs-list.cache
     touch /etc/zfs/zfs-list.cache/bpool
     touch /etc/zfs/zfs-list.cache/rpool
-    zed -F &
+    zed -f
 
-    umount /boot/efi
+    retry 5 test -s /etc/zfs/zfs-list.cache/bpool
+    retry 5 test -s /etc/zfs/zfs-list.cache/rpool
 
-    zfs set mountpoint=legacy bpool/BOOT/ubuntu
-    echo "bpool/BOOT/ubuntu /boot   zfs     nodev,relatime,x-systemd.requires=zfs-import-bpool.service  0   0" >>/etc/fstab
+    pkill zed
+
+    sed -Ei "s|/mnt/?|/|" /etc/zfs/zfs-list.cache/*
+
+    log_success "Filesystem mount ordering fixed!"
 }
 
 create_user() {
@@ -228,7 +233,7 @@ main() {
 
     install_boot_loader
 
-    #fix_filesystem_mount_ordering
+    fix_filesystem_mount_ordering
 
     #create_user
 
