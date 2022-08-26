@@ -131,7 +131,8 @@ update_grub_config() {
 
     sed -i -e 's/GRUB_TIMEOUT_STYLE=hidden/#GRUB_TIMEOUT_STYLE=hidden/' /etc/default/grub
     sed -i -e 's/GRUB_TIMEOUT=0/GRUB_TIMEOUT=5/' /etc/default/grub
-    sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/GRUB_CMDLINE_LINUX_DEFAULT="init_on_alloc=0"/' /etc/default/grub
+    # zfsforce=yes because of failing zpool export at the end of the install (see https://github.com/openzfs/openzfs-docs/issues/270)
+    sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/GRUB_CMDLINE_LINUX_DEFAULT="init_on_alloc=0 zfsforce=yes"/' /etc/default/grub
     sed -i -e 's/#GRUB_TERMINAL=console/GRUB_TERMINAL=console/' /etc/default/grub
 
     update-grub

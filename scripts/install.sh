@@ -269,7 +269,11 @@ unmount_all_filesystems() {
     log_info "Unmounting /mnt filesystems…"
 
     mount | grep -v zfs | tac | awk '/\/mnt/ {print $3}' | xargs -I{} umount -lf {}
-    zpool export -a
+
+    # zpool cannot export rpool (see https://github.com/openzfs/openzfs-docs/issues/270)
+    set +e
+    zpool export -a || log_warning "zpool export failed. Be sure to add zfsforce=yes on the GRUB/Kernel command line to be able to boot!"
+    set -e
 
     log_success "/mnt filesystems unmounted!"
 }
@@ -411,7 +415,7 @@ main() {
 
     clean_chroot
 
-    #unmount_all_filesystems
+    unmount_all_filesystems
 }
 
 main
