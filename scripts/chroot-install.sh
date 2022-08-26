@@ -218,8 +218,10 @@ EOF
 }
 
 snapshot_initial_installation() {
-    zfs snapshot bpool/BOOT/ubuntu@current
-    zfs snapshot rpool/ROOT/ubuntu@current
+    for dataset in "rpool/ROOT/ubuntu" "bpool/BOOT/ubuntu"; do
+        log_info "Creating new snapshot \""$dataset@current"\"…"
+        zfs snapshot -r "$dataset@current"
+    done
 }
 
 main() {
@@ -256,7 +258,7 @@ main() {
 
     tune_zfs_config
 
-    #snapshot_initial_installation
+    snapshot_initial_installation
 }
 
 main
