@@ -55,7 +55,7 @@ select_disk() {
 destroy_existing_pools() {
     log_info "Destroying existing ZFS pool…"
 
-    zpool import -a
+    zpool import -a -f
     for pool_name in $(zpool list -H | awk '{print $1}'); do
         zpool destroy "$pool_name"
 
