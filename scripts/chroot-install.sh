@@ -149,7 +149,7 @@ install_boot_loader() {
 }
 
 fix_filesystem_mount_ordering() {
-    log_info "Fixing filesystem mount ordering"
+    log_info "Fixing filesystem mount ordering…"
 
     mkdir /etc/zfs/zfs-list.cache
     touch /etc/zfs/zfs-list.cache/bpool
@@ -167,29 +167,44 @@ fix_filesystem_mount_ordering() {
 }
 
 create_user() {
+    log_info "Creating default user account…"
+
     local username=user
     local password
     apt install -y whois
     password=$(mkpasswd -m sha-512 "$USER_PASSWORD")
     useradd -m -p "$password" -s /bin/bash "$username"
     usermod -a -G adm,cdrom,dip,lpadmin,plugdev,sambashare,sudo "$username"
+
+    log_success "Default user account created!"
 }
 
 full_install() {
+    log_info "Starting full install…"
+
     apt update
     apt full-upgrade -y
-    apt install -y --no-install-recommends ubuntu-desktop vim bash-completion
+    apt install -y --no-install-recommends ubuntu-desktop
+    apt install -y acpi-support aisleriot apport-gtk appstream apt-config-icons-hidpi avahi-autoipd avahi-daemon baobab bash-completion bluez bluez-cups branding-ubuntu brltty cheese cups cups-bsd cups-client cups-filters dirmngr eog evince file-roller fonts-indic fonts-kacst-one fonts-khmeros-core fonts-lao fonts-liberation fonts-liberation2 fonts-lklug-sinhala fonts-noto-cjk fonts-noto-color-emoji fonts-opensymbol fonts-sil-abyssinica fonts-sil-padauk fonts-thai-tlwg fonts-tibetan-machine fonts-ubuntu gamemode gedit gir1.2-gmenu-3.0 gnome-accessibility-themes gnome-bluetooth gnome-calculator gnome-calendar gnome-characters gnome-disk-utility gnome-font-viewer gnome-initial-setup gnome-keyring gnome-logs gnome-mahjongg gnome-mines gnome-power-manager gnome-remote-desktop gnome-sudoku gnome-system-monitor gnome-terminal gnome-todo gpg-agent gsettings-ubuntu-schemas gvfs-fuse ibus ibus-gtk ibus-gtk3 ibus-table im-config kerneloops laptop-detect libglib2.0-bin libnss-mdns libpam-fprintd libpam-gnome-keyring libpam-sss libproxy1-plugin-gsettings libproxy1-plugin-networkmanager libwmf0.2-7-gtk memtest86+ mousetweaks nautilus-sendto nautilus-share network-manager network-manager-config-connectivity-ubuntu network-manager-openvpn-gnome network-manager-pptp-gnome orca packagekit pcmciautils plymouth-theme-spinner policykit-desktop-privileges printer-driver-brlaser printer-driver-c2esp printer-driver-foo2zjs printer-driver-m2300w printer-driver-min12xxw printer-driver-ptouch printer-driver-pxljr printer-driver-sag-gdi printer-driver-splix pulseaudio-module-bluetooth remmina seahorse snapd speech-dispatcher system-config-printer systemd-oomd ubuntu-docs ubuntu-report ubuntu-wallpapers usb-creator-gtk vim whoopsie xcursor-themes xdg-desktop-portal-gnome xdg-desktop-portal-gtk xdg-utils yaru-theme-gnome-shell yaru-theme-gtk yaru-theme-icon yaru-theme-sound
+
+    log_success "Full install is over!"
 }
 
 configure_network() {
+    log_info "Configuring network to use NetworkManager…"
+
     cat <<EOT >/etc/netplan/01-netcfg.yaml
 network:
   version: 2
   renderer: NetworkManager
 EOT
+
+    log_success "Network configured to use NetworkManager!"
 }
 
 tune_zfs_config() {
+    log_info "Tuning ZFS configuration…"
+
     # Memory used by ZFS should be limited
     # see https://www.solaris-cookbook.eu/linux/linux-ubuntu/debian-ubuntu-centos-zfs-on-linux-zfs-limit-arc-cache/
 
@@ -198,6 +213,8 @@ options zfs zfs_arc_max=4294967296
 EOF
     # see https://serverfault.com/questions/581669/why-isnt-the-arc-max-setting-honoured-on-zfs-on-linux#comment1108614_602457
     refresh_initrd_files
+
+    log_success "ZFS configuration tuned!"
 }
 
 snapshot_initial_installation() {
@@ -237,7 +254,7 @@ main() {
 
     configure_network
 
-    #tune_zfs_config
+    tune_zfs_config
 
     #snapshot_initial_installation
 }
