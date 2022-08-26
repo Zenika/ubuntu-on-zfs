@@ -184,10 +184,43 @@ full_install() {
 
     apt update
     apt full-upgrade -y
-    apt install -y --no-install-recommends ubuntu-desktop
-    apt install -y acpi-support aisleriot apport-gtk appstream apt-config-icons-hidpi avahi-autoipd avahi-daemon baobab bash-completion bluez bluez-cups branding-ubuntu brltty cheese cups cups-bsd cups-client cups-filters dirmngr eog evince file-roller fonts-indic fonts-kacst-one fonts-khmeros-core fonts-lao fonts-liberation fonts-liberation2 fonts-lklug-sinhala fonts-noto-cjk fonts-noto-color-emoji fonts-opensymbol fonts-sil-abyssinica fonts-sil-padauk fonts-thai-tlwg fonts-tibetan-machine fonts-ubuntu gamemode gedit gir1.2-gmenu-3.0 gnome-accessibility-themes gnome-bluetooth gnome-calculator gnome-calendar gnome-characters gnome-disk-utility gnome-font-viewer gnome-initial-setup gnome-keyring gnome-logs gnome-mahjongg gnome-mines gnome-power-manager gnome-remote-desktop gnome-sudoku gnome-system-monitor gnome-terminal gnome-todo gpg-agent gsettings-ubuntu-schemas gvfs-fuse ibus ibus-gtk ibus-gtk3 ibus-table im-config kerneloops laptop-detect libglib2.0-bin libnss-mdns libpam-fprintd libpam-gnome-keyring libpam-sss libproxy1-plugin-gsettings libproxy1-plugin-networkmanager libwmf0.2-7-gtk memtest86+ mousetweaks nautilus-sendto nautilus-share network-manager network-manager-config-connectivity-ubuntu network-manager-openvpn-gnome network-manager-pptp-gnome orca packagekit pcmciautils plymouth-theme-spinner policykit-desktop-privileges printer-driver-brlaser printer-driver-c2esp printer-driver-foo2zjs printer-driver-m2300w printer-driver-min12xxw printer-driver-ptouch printer-driver-pxljr printer-driver-sag-gdi printer-driver-splix pulseaudio-module-bluetooth remmina seahorse snapd speech-dispatcher system-config-printer systemd-oomd ubuntu-docs ubuntu-report ubuntu-wallpapers usb-creator-gtk vim whoopsie xcursor-themes xdg-desktop-portal-gnome xdg-desktop-portal-gtk xdg-utils yaru-theme-gnome-shell yaru-theme-gtk yaru-theme-icon yaru-theme-sound
+    apt install -y ubuntu-desktop-minimal vim bash-completion
 
     log_success "Full install is over!"
+}
+
+firefox_install() {
+    add-apt-repository -y ppa:mozillateam/ppa
+    cat <<EOT >>/etc/apt/preferences.d/mozillateam
+Package: *
+Pin: release o=LP-PPA-mozillateam
+Pin-Priority: 1001
+EOT
+
+    cat <<EOT >>/etc/apt/apt.conf.d/51unattended-upgrades-mozillateam
+Unattended-Upgrade::Allowed-Origins {
+	"LP-PPA-mozillateam:\${distro_codename}";
+};
+EOT
+
+    apt install -y firefox firefox-locale-fr
+}
+
+chromium_install() {
+    add-apt-repository -y ppa:phd/chromium-browser
+    cat <<EOT >>/etc/apt/preferences.d/chromium
+Package: *
+Pin: release o=LP-PPA-phd-chromium-browser
+Pin-Priority: 1001
+EOT
+
+    cat <<EOT >>/etc/apt/apt.conf.d/52unattended-upgrades-chromium
+Unattended-Upgrade::Allowed-Origins {
+	"LP-PPA-phd-chromium-browser:\${distro_codename}";
+};
+EOT
+
+    apt install -y chromium-browser
 }
 
 configure_network() {
@@ -253,6 +286,10 @@ main() {
     create_user
 
     full_install
+
+    firefox_install
+
+    chromium_install
 
     configure_network
 
