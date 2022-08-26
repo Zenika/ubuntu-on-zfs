@@ -260,6 +260,7 @@ clean_chroot() {
     log_info "Cleaning chroot environment…"
 
     rm /mnt/chroot-install.sh
+    rm /mnt/common.sh
 
     log_success "chroot environment cleaned!"
 }
@@ -410,7 +411,7 @@ main() {
 
     clean_chroot
 
-    unmount_all_filesystems
+    #unmount_all_filesystems
 }
 
 main
