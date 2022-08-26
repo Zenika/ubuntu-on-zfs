@@ -177,7 +177,7 @@ create_user() {
 full_install() {
     apt update
     apt full-upgrade -y
-    apt install -y ubuntu-desktop vim bash-completion
+    apt install -y --no-install-recommends ubuntu-desktop vim bash-completion
 }
 
 configure_network() {
