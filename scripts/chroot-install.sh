@@ -253,9 +253,107 @@ EOF
     log_success "ZFS configuration tuned!"
 }
 
+add_rollback_script_to_initrd() {
+    log_info "Customizing initrd with rollback script…"
+
+    local datasets
+    mapfile -t datasets < <(zfs list -o name -H | grep "/ubuntu" | tac)
+
+    cat <<EOF >/etc/initramfs-tools/scripts/local-bottom/zfs-rollback
+#!/bin/sh
+
+set -e
+
+PREREQ="zfs"
+prereqs() {
+    echo "\$PREREQ"
+}
+
+case \$1 in
+prereqs)
+    prereqs
+    exit 0
+    ;;
+esac
+
+# shellcheck disable=SC1091
+. /scripts/functions
+
+rollback() {
+
+    log_begin_msg "Import ZFS pools"
+    zpool import -a
+    log_end_msg
+
+    log_begin_msg "List ZFS datasets"
+    zfs list
+    log_end_msg
+
+    log_begin_msg "Rollback to initial state"
+    for snapshot in $(printf "\"%s\" " "${datasets[@]}"); do
+        zfs rollback -r "\$snapshot@current"
+    done
+    log_end_msg
+
+    log_success_msg "Device restaured to initial state"
+
+    log_begin_msg "Exporting zpools"
+    zpool export -a
+    log_end_msg
+
+    echo "Press any key to shutdown the computer"
+    read -r
+
+    poweroff -f
+}
+
+# check kernel command line and look for a rollback argument
+for arg in \$(cat /proc/cmdline); do
+    if [ "\$arg" = "rollback" ]; then
+        rollback
+    fi
+done
+EOF
+
+    chmod +x /etc/initramfs-tools/scripts/local-bottom/zfs-rollback
+
+    refresh_initrd_files
+
+    log_success "Rollback script added to initrd"
+}
+
+
+add_custom_entry_to_grub_menu() {
+    log_info "Adding custom entry to GRUB menu…"
+    cat <<EOF >>/etc/grub.d/40_custom
+
+submenu 'Restore computer to initial state' {
+    menuentry 'Nope, I mistyped, sorry' {
+        echo 'OK, shuting down then...'
+        halt
+    }
+    menuentry 'Yes, restore computer to initial state!' {
+        load_video
+        insmod gzio
+        insmod part_gpt
+        insmod zfs
+        set root='hd0,gpt2'
+        echo 'Loading Linux...'
+        linux "/BOOT/ubuntu@/vmlinuz" root=ZFS="rpool/ROOT/ubuntu" rollback
+        echo 'Loading initial ramdisk...'
+        initrd "/BOOT/ubuntu@/initrd.img"
+    }
+}
+EOF
+
+    update-grub
+
+    log_success "GRUB menu updated with custom entry…"
+}
+
 snapshot_initial_installation() {
     for dataset in "rpool/ROOT/ubuntu" "bpool/BOOT/ubuntu"; do
-        log_info "Creating new snapshot \""$dataset@current"\"…"
+        log_info "Creating new snapshots for \"$dataset\" and its descendants…"
         zfs snapshot -r "$dataset@current"
     done
 }
@@ -297,6 +395,10 @@ main() {
     configure_network
 
     tune_zfs_config
+
+    add_rollback_script_to_initrd
+
+    add_custom_entry_to_grub_menu
 
     snapshot_initial_installation
 }
