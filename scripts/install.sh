@@ -97,7 +97,7 @@ create_zfs_pools() {
     log_info "Creating new ZFS pools…"
 
     # In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev, so zpool create may fail
-    retry 5 zpool create \
+    retry 5 zpool create -f \
         -o ashift=12 \
         -o autotrim=on \
         -o cachefile=/etc/zfs/zpool.cache \
@@ -112,7 +112,7 @@ create_zfs_pools() {
         -O canmount=off -O mountpoint=/boot -R /mnt \
         bpool "${TARGET_DISK}-part2"
 
-    retry 5 zpool create \
+    retry 5 zpool create -f \
         -o ashift=12 \
         -o autotrim=on \
         -O acltype=posixacl -O xattr=sa -O dnodesize=auto \
@@ -241,10 +241,7 @@ prepare_for_chroot() {
     chmod u+x /mnt/chroot-install.sh /mnt/common.sh
 
     cp zfs-scripts/* /mnt/usr/local/bin/
-    cp common.sh /mnt/usr/local/bin/
-    chmod u+x /mnt/usr/local/bin/*
-
-    log_success "Ready for chroot!"
+    cp common.sh /mnt/usr/local/bin/Instantané 1
 }
 
 chroot_install() {
