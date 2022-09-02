@@ -5,8 +5,11 @@
 # instead of continuing the installation with something broken
 set -e
 
-# shellcheck source=./common.sh
-source "./common.sh"
+PROGDIR=$(readlink -m "$(dirname "$0")")
+readonly PROGDIR
+
+# shellcheck disable=SC1091
+. "$PROGDIR/common.sh"
 
 update_apt_sources() {
     log_info "Updating APT sources…"

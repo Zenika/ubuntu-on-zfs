@@ -4,10 +4,12 @@ set -e
 
 PROGNAME=$(basename "$0")
 readonly PROGNAME
+PROGDIR=$(readlink -m "$(dirname "$0")")
+readonly PROGDIR
 readonly ARGS=("$@")
 
-# shellcheck source=./common.sh
-source "./common.sh"
+# shellcheck disable=SC1091
+. "$PROGDIR/common.sh"
 
 check_root() {
     if [[ "${EUID}" -ne 0 ]]; then
@@ -23,7 +25,7 @@ install_requirements() {
     apt install -y debootstrap gdisk zfs-initramfs
     systemctl stop zed
 
-    log_success "Pacakges installed!"
+    log_success "Packages installed!"
 }
 
 select_disk() {
@@ -227,6 +229,14 @@ set_user_password() {
     log_success "user password configured!"
 }
 
+copy_rollback_config_files() {
+    log_info "Copying initramfs-tools and GRUB config files for rollback feature…"
+
+    cp -r --preserve=mode "$PROGDIR/files/etc" /mnt/
+
+    log_success "initramfs-tools and GRUB config files copied!"
+}
+
 prepare_for_chroot() {
     log_info "Preparing for chroot…"
 
@@ -408,6 +418,8 @@ main() {
     configure_apt_sources
 
     set_user_password
+
+    copy_rollback_config_files
 
     prepare_for_chroot
 
