@@ -240,8 +240,7 @@ prepare_for_chroot() {
     cp common.sh /mnt
     chmod u+x /mnt/chroot-install.sh /mnt/common.sh
 
-    cp zfs-scripts/* /mnt/usr/local/bin/
-    cp common.sh /mnt/usr/local/bin/Instantané 1
+    log_success "Ready for chroot!"
 }
 
 chroot_install() {
