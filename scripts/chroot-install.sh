@@ -187,7 +187,10 @@ full_install() {
 
     apt update
     apt full-upgrade -y
-    apt install -y ubuntu-desktop-minimal vim bash-completion
+    apt install -y ubuntu-desktop-minimal
+    apt install -y vim bash-completion friendly-recovery
+    # shellcheck disable=SC2046
+    apt install -y $(check-language-support -l fr)
 
     log_success "Full install is over!"
 }
