@@ -1,13 +1,15 @@
 #!/bin/bash
 
-# -e option instructs bash to immediately exit if any command [1] has a non-zero exit status
-# We do not want users to end up with a partially working install, so we exit the script
-# instead of continuing the installation with something broken
 set -e
 
-readonly PROGNAME=$(basename "$0")
-readonly PROGDIR=$(readlink -m "$(dirname "$0")")
+PROGNAME=$(basename "$0")
+readonly PROGNAME
+PROGDIR=$(readlink -m "$(dirname "$0")")
+readonly PROGDIR
 readonly ARGS=("$@")
+
+# shellcheck disable=SC1091
+. "$PROGDIR/common.sh"
 
 check_root() {
     if [[ "${EUID}" -ne 0 ]]; then
@@ -16,20 +18,28 @@ check_root() {
     fi
 }
 
-dependencies() {
-    apt-add-repository universe
+install_requirements() {
+    log_info "Installing required packages…"
+
+    apt-add-repository -y universe
     apt install -y debootstrap gdisk zfs-initramfs
+    systemctl stop zed
+
+    log_success "Packages installed!"
 }
 
 select_disk() {
     local disks
     local options
+
+    log_info "Selecting disk to install on…"
+
     if [ -z "$TARGET_DISK" ]; then
         shopt -s nullglob
         disks=(/dev/disk/by-id/*)
         shopt -u nullglob
         options=()
-        
+
         for i in "${!disks[@]}"; do
             options+=("${disks[i]}")
             options+=("")
@@ -40,124 +50,170 @@ select_disk() {
             "${options[@]}" \
             3>&1 1>&2 2>&3)
     fi
-    echo "The chosen disk is: ${TARGET_DISK}"
+
+    log_success "The chosen disk is: ${TARGET_DISK}"
 }
 
-format_disk() {
-    sgdisk --zap-all "${TARGET_DISK}"
-}
+destroy_existing_pools() {
+    log_info "Destroying existing ZFS pool…"
 
-create_partitions() {
-    sgdisk -n2:1M:+512M \
-    -t2:EF00 \
-    "${TARGET_DISK}"
+    zpool import -a -f
+    for pool_name in $(zpool list -H | awk '{print $1}'); do
+        zpool destroy "$pool_name"
 
-    sgdisk -n3:0:+512M \
-    -t3:BF01 \
-    "${TARGET_DISK}"
-
-    sgdisk -n4:0:0 \
-    -t4:BF01 \
-    "${TARGET_DISK}"
-}
-
-# In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev.
-# Let's wait for them to be ready.
-wait_for_partitions() {
-    local retry=10
-
-    until [ -b "$TARGET_DISK-part3" ] \
-        && [ -b "$TARGET_DISK-part4" ]; do
-        if [ "$(((retry--)))" -eq 0 ]; then
-            echo "Timeout waiting for partitions"
-            exit 1
-        fi
-        echo "Waiting for partitions to be ready…"
-        sleep 1
+        log_success "Pool \"$pool_name\" destroyed!"
     done
 }
 
+clear_partition_table() {
+    log_info "Destroying existing partition table on disk…"
+
+    sgdisk --zap-all "${TARGET_DISK}"
+
+    log_success "Partition table destroyed!"
+}
+
+create_partitions() {
+    log_info "Creating new partitions…"
+    # Bootloader partition
+    sgdisk -n1:1M:+512M \
+        -t1:EF00 \
+        "${TARGET_DISK}"
+
+    # Boot pool partition
+    sgdisk -n2:0:+2G \
+        -t2:BE00 \
+        "${TARGET_DISK}"
+
+    # Root pool partition
+    sgdisk -n3:0:0 \
+        -t3:BF00 \
+        "${TARGET_DISK}"
+
+    log_success "New partitions created!"
+}
+
 create_zfs_pools() {
+    log_info "Creating new ZFS pools…"
 
-    zpool create -f -o ashift=12 \
-      -d \
-      -o feature@async_destroy=enabled \
-      -o feature@bookmarks=enabled \
-      -o feature@embedded_data=enabled \
-      -o feature@empty_bpobj=enabled \
-      -o feature@enabled_txg=enabled \
-      -o feature@extensible_dataset=enabled \
-      -o feature@filesystem_limits=enabled \
-      -o feature@hole_birth=enabled \
-      -o feature@large_blocks=enabled \
-      -o feature@lz4_compress=enabled \
-      -o feature@spacemap_histogram=enabled \
-      -o feature@userobj_accounting=enabled \
-      -O acltype=posixacl \
-      -O canmount=off \
-      -O compression=lz4 \
-      -O devices=off \
-      -O normalization=formD \
-      -O relatime=on \
-      -O xattr=sa \
-      -O mountpoint=/ \
-      -R /mnt \
-      bpool \
-      "${TARGET_DISK}-part3"
+    # In /dev/disk/by-id, symbolic links to new block devices are created asynchronously by udev, so zpool create may fail
+    retry 5 zpool create -f \
+        -o ashift=12 \
+        -o autotrim=on \
+        -o cachefile=/etc/zfs/zpool.cache \
+        -o compatibility=grub2 \
+        -o feature@livelist=enabled \
+        -o feature@zpool_checkpoint=enabled \
+        -O devices=off \
+        -O acltype=posixacl -O xattr=sa \
+        -O compression=lz4 \
+        -O normalization=formD \
+        -O relatime=on \
+        -O canmount=off -O mountpoint=/boot -R /mnt \
+        bpool "${TARGET_DISK}-part2"
 
-      zpool create -f -o ashift=12 \
-      -O acltype=posixacl \
-      -O canmount=off \
-      -O compression=lz4 \
-      -O dnodesize=auto \
-      -O normalization=formD \
-      -O relatime=on \
-      -O xattr=sa \
-      -O mountpoint=/ \
-      -R /mnt \
-      rpool \
-      "${TARGET_DISK}-part4"
+    retry 5 zpool create -f \
+        -o ashift=12 \
+        -o autotrim=on \
+        -O acltype=posixacl -O xattr=sa -O dnodesize=auto \
+        -O compression=lz4 \
+        -O normalization=formD \
+        -O relatime=on \
+        -O canmount=off -O mountpoint=/ -R /mnt \
+        rpool "${TARGET_DISK}-part3"
+
+    log_success "New ZFS pools created!"
 }
 
 create_zfs_datasets() {
+    log_info "Creating new ZFS datasets…"
+
+    # "Container" fylesystem datasets
     zfs create -o canmount=off -o mountpoint=none rpool/ROOT
     zfs create -o canmount=off -o mountpoint=none bpool/BOOT
 
-    zfs create -o canmount=noauto -o mountpoint=/ rpool/ROOT/ubuntu
-    zfs mount rpool/ROOT/ubuntu
+    # Filesystem datasets for the root and boot filesystems
+    zfs create -o mountpoint=/ rpool/ROOT/ubuntu
+    zfs create -o mountpoint=/boot bpool/BOOT/ubuntu
 
-    zfs create -o canmount=noauto -o mountpoint=/boot bpool/BOOT/ubuntu
-    zfs mount bpool/BOOT/ubuntu
+    zfs create -o canmount=off rpool/ROOT/ubuntu/usr
+    zfs create rpool/ROOT/ubuntu/usr/local
+    zfs create -o canmount=off rpool/ROOT/ubuntu/var
+    zfs create rpool/ROOT/ubuntu/var/lib
+    zfs create rpool/ROOT/ubuntu/var/lib/apt
+    zfs create rpool/ROOT/ubuntu/var/lib/docker
+    zfs create rpool/ROOT/ubuntu/var/lib/dpkg
+    zfs create rpool/ROOT/ubuntu/var/lib/AccountsService
+    zfs create rpool/ROOT/ubuntu/var/lib/NetworkManager
+    zfs create rpool/ROOT/ubuntu/var/log
+    zfs create rpool/ROOT/ubuntu/var/snap
+    zfs create rpool/ROOT/ubuntu/var/spool
+
+    log_success "New ZFS datasets created!"
 }
 
-install_minimum_system() {
-    debootstrap bionic /mnt
-    zfs set devices=off rpool
+mount_run_tmpfs() {
+    log_info "Mouting a tmpfs at /mnt/run…"
+
+    mkdir -p /mnt/run
+    mount -t tmpfs tmpfs /mnt/run
+    mkdir -p /mnt/run/lock
+
+    log_success "tmpfs mounted at /mnt/run!"
+}
+
+install_minimal_system() {
+    log_info "Installing minimal system in /mnt…"
+
+    debootstrap jammy /mnt
+
+    log_success "Minimal system installed in /mnt!"
+}
+
+copy_zpool_cache() {
+    log_info "Copying zpool.cache to /mnt/etc/zfs…"
+
+    mkdir -p /mnt/etc/zfs
+    cp /etc/zfs/zpool.cache /mnt/etc/zfs/
+
+    log_success "zpool.cache copied to /mnt/etc/zfs!"
 }
 
 configure_hostname() {
+    log_info "Configuring device hostname…"
+
     if [ -z "$TARGET_HOSTNAME" ]; then
         TARGET_HOSTNAME=$(whiptail --inputbox \
-            "Enter a host name for this machine" 8 78 "" \
+            "Enter a host name for this device" 8 78 "" \
             --title "Host name" 3>&1 1>&2 2>&3)
     fi
 
-    echo "${TARGET_HOSTNAME}" > /mnt/etc/hostname
-    echo "127.0.1.1       ${TARGET_HOSTNAME}" >> /mnt/etc/hosts
+    echo "${TARGET_HOSTNAME}" >/mnt/etc/hostname
+    echo "127.0.1.1       ${TARGET_HOSTNAME}" >>/mnt/etc/hosts
+
+    log_success "Device hostname is: $TARGET_HOSTNAME"
 }
 
 configure_apt_sources() {
-    cat <<EOT > /mnt/etc/apt/sources.list
-deb http://fr.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse
-deb http://fr.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse
-deb http://fr.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse
-deb http://security.ubuntu.com/ubuntu bionic-security main restricted universe multiverse
+
+    log_info "Configuring APT sources…"
+
+    cat <<EOT >/mnt/etc/apt/sources.list
+deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
 EOT
+
+    log_success "APT sources configured!"
 }
 
 set_user_password() {
     local firstTry
     local secondTry
+
+    log_info "Configuring user password…"
+
     until [ -n "$USER_PASSWORD" ]; do
         firstTry=$(whiptail --passwordbox \
             "Enter password for default user" 8 78 "" \
@@ -169,37 +225,60 @@ set_user_password() {
             USER_PASSWORD=$firstTry
         fi
     done
+
+    log_success "user password configured!"
 }
 
 prepare_for_chroot() {
-    mount --rbind /dev  /mnt/dev
-    mount --rbind /proc /mnt/proc
-    mount --rbind /sys  /mnt/sys
+    log_info "Preparing for chroot…"
+
+    mount --make-private --rbind /dev /mnt/dev
+    mount --make-private --rbind /proc /mnt/proc
+    mount --make-private --rbind /sys /mnt/sys
+
     cp chroot-install.sh /mnt
-    chmod u+x /mnt/chroot-install.sh
-    cp zfs-scripts/* /mnt/usr/local/bin/
-    chmod u+x /mnt/usr/local/bin/*
+    cp common.sh /mnt
+    chmod u+x /mnt/chroot-install.sh /mnt/common.sh
+
+    log_success "Ready for chroot!"
 }
 
 chroot_install() {
+    log_info "Running installation in chroot…"
+
     chroot /mnt /usr/bin/env \
         TARGET_DISK="$TARGET_DISK" \
         USER_PASSWORD="$USER_PASSWORD" \
         /chroot-install.sh
+
+    log_success "Installation in chroot is done!"
 }
 
 clean_chroot() {
+    log_info "Cleaning chroot environment…"
+
     rm /mnt/chroot-install.sh
+    rm /mnt/common.sh
+
+    log_success "chroot environment cleaned!"
 }
 
 unmount_all_filesystems() {
-    mount | grep -v zfs | tac | awk '/\/mnt/ {print $3}' | xargs -i{} umount -lf {}
-    zpool export -a
+    log_info "Unmounting /mnt filesystems…"
+
+    mount | grep -v zfs | tac | awk '/\/mnt/ {print $3}' | xargs -I{} umount -lf {}
+
+    # zpool cannot export rpool (see https://github.com/openzfs/openzfs-docs/issues/270)
+    set +e
+    zpool export -a || log_warning "zpool export failed. Be sure to add zfsforce=yes on the GRUB/Kernel command line to be able to boot!"
+    set -e
+
+    log_success "/mnt filesystems unmounted!"
 }
 
 usage() {
     # Do NOT replace TAB characters with spaces in the following block
-    cat <<- EOF
+    cat <<-EOF
 	USAGE
         $PROGNAME [-d <block device path>]
                   [-n <host name>]
@@ -232,7 +311,6 @@ usage() {
 	EOF
 }
 
-
 cmdline() {
     # Adapted from http://kfirlavi.herokuapp.com/blog/2012/11/14/defensive-bash-programming/
     local arg
@@ -245,24 +323,24 @@ cmdline() {
     for arg; do
         local delim=""
         case "$arg" in
-            # Translate --some-long-option to -s (short options)
-            --disk)
-                args="${args}-d "
-                ;;
-            --hostname)
-                args="${args}-n "
-                ;;
-            --password)
-                args="${args}-p "
-                ;;
-            --help)
-                args="${args}-h "
-                ;;
-            # Pass through anything else
-            *)
-                [[ "${arg:0:1}" == "-" ]] || delim="\""
-                args="${args}${delim}${arg}${delim} "
-                ;;
+        # Translate --some-long-option to -s (short options)
+        --disk)
+            args="${args}-d "
+            ;;
+        --hostname)
+            args="${args}-n "
+            ;;
+        --password)
+            args="${args}-p "
+            ;;
+        --help)
+            args="${args}-h "
+            ;;
+        # Pass through anything else
+        *)
+            [[ "${arg:0:1}" == "-" ]] || delim="\""
+            args="${args}${delim}${arg}${delim} "
+            ;;
         esac
     done
 
@@ -297,28 +375,31 @@ cmdline() {
     done
 }
 
-
 main() {
 
     check_root
 
     cmdline "${ARGS[@]}"
 
-    dependencies
+    install_requirements
 
     select_disk
 
-    format_disk
+    destroy_existing_pools
+
+    clear_partition_table
 
     create_partitions
-
-    wait_for_partitions
 
     create_zfs_pools
 
     create_zfs_datasets
 
-    install_minimum_system
+    mount_run_tmpfs
+
+    install_minimal_system
+
+    copy_zpool_cache
 
     configure_hostname
 
