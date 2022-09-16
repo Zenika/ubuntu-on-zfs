@@ -80,5 +80,6 @@ image::restore.gif[Filesystem rollback,align="center"]
 
 [bibliography]
 * [[[ubuntu-on-zfs-tutorial,1]]] Ubuntu 22.04 Root on ZFS : https://openzfs.github.io/openzfs-docs/Getting%20Started/Ubuntu/Ubuntu%2022.04%20Root%20on%20ZFS.html
-* manpage `zpool` : https://openzfs.github.io/openzfs-docs/man/8/zpool.8.html
+* manpage `zpool` : https://openzfs.github.io/openzfs-docs/man/8/zpool.8.html
 * manpage `zfs` : https://openzfs.github.io/openzfs-docs/man/8/zfs.8.html
+* manpage `initramfs-tools` : https://manpages.ubuntu.com/manpages/bionic/en/man8/initramfs-tools.8.html
