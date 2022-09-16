@@ -71,6 +71,8 @@ Une fois la réinitialisation terminée, le PC s'éteint.
 Au démarrage suivant, on le retrouve dans l'état dans lequel il était juste
 après l'installation.
 
+image::restore.gif[Filesystem rollback,align="center"]
+
 
 [appendix]
 [references]
